@@ -1,212 +1,85 @@
-import { User } from "lucide-react";
-import Swal from "sweetalert2";
-import { QRCodeCanvas } from "qrcode.react";
-import Barcode from "react-barcode";
-import axios from "axios";
-import * as XLSX from "xlsx-js-style";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import MainLayout from "./layouts/MainLayout";
 
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import Login from "./pages/auth/Login";
+import Dashboard from "./pages/dashboard/Dashboard";
 
-import { Bar } from "react-chartjs-2";
+import BonSementara from "./pages/entry-reguler/BonSementara";
+import MuatFg from "./pages/entry-reguler/MuatFg";
+import BongkarRm from "./pages/entry-reguler/BongkarRm";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-);
+import UangMakan from "./pages/entry-nonreguler/UangMakan";
+import SusunTire from "./pages/entry-nonreguler/SusunTire";
+import PemindahanBarang from "./pages/entry-nonreguler/PemindahanBarang";
+import BongkarLuar from "./pages/entry-nonreguler/BongkarLuar";
 
-const chartData = {
-  labels: ["Jan", "Feb", "Mar"],
-  datasets: [
-    {
-      label: "Penjualan",
-      data: [10, 20, 15],
-    },
-  ],
-};
+import ApproveBongkarmuat from "./pages/management/ApproveBongkarmuat";
+import PerformanceKuli from "./pages/management/PerformanceKuli";
+import BalanceCash from "./pages/management/BalanceCash";
+
+import DaftarKuli from "./pages/master/DaftarKuli";
+import HargaUm from "./pages/master/HargaUm";
+import JenisBarang from "./pages/master/JenisBarang";
+import KendaraanFg from "./pages/master/KendaraanFg";
+import DataUser from "./pages/master/DataUser";
+
+import Bantuan from "./pages/bantuan/Bantuan";
+import Masukan from "./pages/masukan/Masukan";
 
 function App() {
-  const showAlert = () => {
-    Swal.fire({
-      title: "Berhasil",
-      text: "Data tersimpan",
-      icon: "success",
-    });
-  };
-
-  const exportExcel = () => {
-    const wb = XLSX.utils.book_new();
-
-    const ws = XLSX.utils.aoa_to_sheet([
-      ["NAMA", "UMUR", "KOTA"],
-      ["Adi", 30, "Bandung"],
-      ["Budi", 25, "Jakarta"],
-      ["Siti", 28, "Bekasi"],
-    ]);
-
-    const range = XLSX.utils.decode_range(ws["!ref"]);
-
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellRef = XLSX.utils.encode_cell({
-          r: R,
-          c: C,
-        });
-
-        if (!ws[cellRef]) continue;
-
-        ws[cellRef].s = {
-          border: {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } },
-          },
-
-          alignment: {
-            horizontal: "center",
-            vertical: "center",
-          },
-        };
-
-        if (R === 0) {
-          ws[cellRef].s = {
-            ...ws[cellRef].s,
-
-            fill: {
-              fgColor: {
-                rgb: "FF0000",
-              },
-            },
-
-            font: {
-              bold: true,
-              color: {
-                rgb: "FFFFFF",
-              },
-            },
-          };
-        }
-      }
-    }
-
-    ws["!cols"] = [{ wch: 20 }, { wch: 10 }, { wch: 20 }];
-
-    XLSX.utils.book_append_sheet(wb, ws, "LAPORAN");
-
-    XLSX.writeFile(wb, "laporan_styled.xlsx");
-  };
-
-  const exportPDF = () => {
-    const doc = new jsPDF();
-
-    doc.setFontSize(18);
-
-    doc.text("LAPORAN DATA KARYAWAN", 14, 20);
-
-    autoTable(doc, {
-      startY: 30,
-
-      head: [["Nama", "Umur", "Kota"]],
-
-      body: [
-        ["Adi", "30", "Bandung"],
-        ["Budi", "25", "Jakarta"],
-        ["Siti", "28", "Bekasi"],
-      ],
-
-      theme: "grid",
-
-      headStyles: {
-        fillColor: [255, 0, 0],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-      },
-
-      bodyStyles: {
-        lineColor: [0, 0, 0],
-        lineWidth: 0.2,
-      },
-    });
-
-    doc.save("laporan_styled.pdf");
-  };
-
-  const getData = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000");
-
-      Swal.fire({
-        title: "Response API",
-        text: JSON.stringify(res.data),
-        icon: "success",
-      });
-
-      console.log(res.data);
-    } catch (error) {
-      console.error(error);
-
-      Swal.fire({
-        title: "Error",
-        text: "Tidak dapat terhubung ke API",
-        icon: "error",
-      });
-    }
-  };
-
   return (
-    <div className="container mt-4">
-      <h1 className="mb-4">
-        <User size={32} className="me-2" />
-        WEB BLANK
-      </h1>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* ==== Auth (public) — samakan dengan AuthController@showLogin/login ==== */}
+          <Route path="/login" element={<Login />} />
 
-      <div className="mb-4">
-        <button className="btn btn-success me-2" onClick={showAlert}>
-          SweetAlert
-        </button>
+          {/* ==== Semua route di bawah butuh session (samakan dengan middleware auth.session) ==== */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
 
-        <button className="btn btn-primary me-2" onClick={getData}>
-          Test API
-        </button>
+            {/* Entry Ongkos Reguler */}
+            <Route path="/bon-sementara" element={<BonSementara />} />
+            <Route path="/muat-fg" element={<MuatFg />} />
+            <Route path="/bongkar-rm" element={<BongkarRm />} />
 
-        <button className="btn btn-warning me-2" onClick={exportExcel}>
-          Export Excel
-        </button>
+            {/* Entry Ongkos Non Reguler */}
+            <Route path="/uang-makan" element={<UangMakan />} />
+            <Route path="/susun-tire" element={<SusunTire />} />
+            <Route path="/pemindahan-barang" element={<PemindahanBarang />} />
+            <Route path="/bongkar-luar" element={<BongkarLuar />} />
 
-        <button className="btn btn-danger" onClick={exportPDF}>
-          Export PDF
-        </button>
-      </div>
+            {/* Management */}
+            <Route path="/approve-bongkarmuat" element={<ApproveBongkarmuat />} />
+            <Route path="/performance-kuli" element={<PerformanceKuli />} />
+            <Route path="/balance-cash" element={<BalanceCash />} />
 
-      <div className="card p-3 mb-4">
-        <h3>QR Code</h3>
-        <QRCodeCanvas value="ADI SAPUTRA" />
-      </div>
+            {/* Master Data */}
+            <Route path="/daftar-kuli" element={<DaftarKuli />} />
+            <Route path="/harga-um" element={<HargaUm />} />
+            <Route path="/jenis-barang" element={<JenisBarang />} />
+            <Route path="/kendaraan-fg" element={<KendaraanFg />} />
+            <Route path="/data-user" element={<DataUser />} />
 
-      <div className="card p-3 mb-4">
-        <h3>Barcode</h3>
-        <Barcode value="123456789" />
-      </div>
+            {/* Bantuan & Masukan */}
+            <Route path="/bantuan" element={<Bantuan />} />
+            <Route path="/masukan" element={<Masukan />} />
+          </Route>
 
-      <div className="card p-3 mb-4">
-        <h3>Grafik</h3>
-        <Bar data={chartData} />
-      </div>
-    </div>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
