@@ -40,7 +40,7 @@ export default function Login() {
         <div className="login-logo">
           <img src="/images/logo-gt.png" alt="Logo GT" width={40} height={40} />
         </div>
-        <h1>LOLI</h1>
+        <h5>PT GAJAH TUNGGAL TBK</h5>
         <div className="subtitle">Logistik Ongkos Kuli</div>
 
         <form className="form-neo" onSubmit={handleSubmit}>

@@ -9,18 +9,18 @@ import WarehouseSparkCard from "./WarehouseSparkCard";
 // TODO (fase backend): ganti dengan hasil query nominalHariIni / persentaseHariIni /
 // sparklineData per warehouse dari DashboardController@index
 const warehouseSpark = [
-  {
-    warehouse: "DPW",
-    nominal: 5500000,
-    persen: 0,
-    trend: [4, 6, 5, 8, 6, 7, 6, 5, 7, 6],
-  },
+  { warehouse: "DPW", nominal: 5500000, persen: 0, trend: [4, 6, 5, 8, 6, 7, 6, 5, 7, 6] },
 ];
 
 export default function Dashboard() {
   const { user } = useAuth();
   return (
     <div>
+      <PageHeader
+        title={`Selamat datang, ${user?.nama || "User"}`}
+        subtitle="Ringkasan aktivitas operasional ongkos kuli hari ini"
+      />
+
       <div className="dash-grid">
         {/* Kolom kiri: Kapasitas Kuli + Kuli Unperform */}
         <div className="dash-col-left">
