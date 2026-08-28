@@ -21,7 +21,10 @@ export default function Masukan() {
 
   return (
     <div>
-      <PageHeader title="Masukan" subtitle="Sampaikan saran atau kendala penggunaan aplikasi" />
+      <PageHeader
+        title="Masukan"
+        subtitle="Sampaikan saran atau kendala penggunaan Web"
+      />
 
       <div className="glass-card panel" style={{ maxWidth: 640 }}>
         <form className="form-neo" onSubmit={handleSubmit}>
@@ -30,7 +33,9 @@ export default function Masukan() {
             <input
               id="subjek"
               value={form.subjek}
-              onChange={(e) => setForm((f) => ({ ...f, subjek: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, subjek: e.target.value }))
+              }
               placeholder="Contoh: Saran fitur export PDF"
               required
             />
@@ -41,7 +46,9 @@ export default function Masukan() {
               id="pesan"
               rows={5}
               value={form.pesan}
-              onChange={(e) => setForm((f) => ({ ...f, pesan: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, pesan: e.target.value }))
+              }
               placeholder="Tuliskan masukan Anda di sini..."
               required
             />

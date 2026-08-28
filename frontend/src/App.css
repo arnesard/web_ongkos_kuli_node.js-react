@@ -561,16 +561,16 @@
   object-fit: contain;
   filter: brightness(1.08) drop-shadow(0 0 8px rgba(128, 200, 255, 0.35));
 }
-.login-card h1 {
+.login-card h5 {
   text-align: center;
-  font-size: 22px;
+  font-size: 20px;
   letter-spacing: 0.08em;
   margin-bottom: 2px;
 }
 .login-card .subtitle {
   text-align: center;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 26px;

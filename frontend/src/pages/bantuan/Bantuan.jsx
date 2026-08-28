@@ -19,12 +19,22 @@ const faqs = [
 export default function Bantuan() {
   return (
     <div>
-      <PageHeader title="Bantuan" subtitle="Panduan penggunaan aplikasi Logistik Ongkos Kuli" />
+      <PageHeader
+        title="Bantuan"
+        subtitle="Panduan penggunaan Web Logistik Ongkos Kuli"
+      />
 
       <div className="glass-card panel">
         <div className="panel-title">
           <h3>
-            <LifeBuoy size={16} style={{ marginRight: 8, verticalAlign: "-3px", color: "var(--accent-2)" }} />
+            <LifeBuoy
+              size={16}
+              style={{
+                marginRight: 8,
+                verticalAlign: "-3px",
+                color: "var(--accent-2)",
+              }}
+            />
             Pertanyaan Umum
           </h3>
         </div>
@@ -39,11 +49,29 @@ export default function Bantuan() {
                 background: "rgba(16,26,51,0.4)",
               }}
             >
-              <div style={{ display: "flex", gap: 8, fontWeight: 600, marginBottom: 6 }}>
-                <MessageCircleQuestion size={16} style={{ color: "var(--accent-2)" }} />
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                <MessageCircleQuestion
+                  size={16}
+                  style={{ color: "var(--accent-2)" }}
+                />
                 {f.q}
               </div>
-              <div style={{ color: "var(--text-secondary)", fontSize: 13.5, lineHeight: 1.6 }}>{f.a}</div>
+              <div
+                style={{
+                  color: "var(--text-secondary)",
+                  fontSize: 13.5,
+                  lineHeight: 1.6,
+                }}
+              >
+                {f.a}
+              </div>
             </div>
           ))}
         </div>
@@ -54,11 +82,26 @@ export default function Bantuan() {
           <h3>Hubungi Tim IT / Logistic</h3>
         </div>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--text-secondary)" }}>
-            <Mail size={16} style={{ color: "var(--accent-2)" }} /> it-support@logistik.co.id
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <Mail size={16} style={{ color: "var(--accent-2)" }} />{" "}
+            gudangban.b@gt-tires.com
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--text-secondary)" }}>
-            <Phone size={16} style={{ color: "var(--accent-2)" }} /> (021) 555-0192
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <Phone size={16} style={{ color: "var(--accent-2)" }} /> 08119518095
           </div>
         </div>
       </div>

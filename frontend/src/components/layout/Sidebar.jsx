@@ -39,7 +39,7 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
   const handleLogout = () => {
     Swal.fire({
       title: "Konfirmasi Logout",
-      text: "Yakin ingin keluar dari aplikasi Logistik Ongkos Kuli?",
+      text: "Yakin ingin keluar dari Web Logistik Ongkos Kuli?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Logout Sekarang",
