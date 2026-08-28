@@ -1,8 +1,8 @@
 import CrudPage from "../../components/common/CrudPage";
+import { userApi } from "../../api/endpoints";
 
-// Disamakan dengan components/data-user-tabel.blade.php
+// Disamakan dengan data_user_tbl (nip, nama, level, user, email, warehouse, password)
 const columns = [
-  { name: "NO", selector: (r) => r.no, width: "60px" },
   { name: "NIP", selector: (r) => r.nip, sortable: true },
   { name: "NAMA", selector: (r) => r.nama, sortable: true },
   {
@@ -10,9 +10,9 @@ const columns = [
     selector: (r) => r.level,
     cell: (r) => <span className="badge-neo info">{r.level}</span>,
   },
-  { name: "USERNAME", selector: (r) => r.username },
+  { name: "USERNAME", selector: (r) => r.user },
   { name: "EMAIL", selector: (r) => r.email },
-  { name: "WH", selector: (r) => r.warehouse, width: "90px" },
+  { name: "WAREHOUSE", selector: (r) => r.warehouse, width: "110px" },
 ];
 
 const fields = [
@@ -23,33 +23,18 @@ const fields = [
     label: "Level",
     type: "select",
     required: true,
-    options: ["Admin", "Supervisor", "Staff"],
+    options: ["SH", "DH", "HOD", "Super_User"],
   },
-  { name: "username", label: "Username", required: true },
+  { name: "user", label: "Username", required: true },
   { name: "email", label: "Email", type: "email", required: true },
   { name: "warehouse", label: "Warehouse", required: true },
+  {
+    name: "password",
+    label: "Password (kosongkan jika tidak diubah)",
+    type: "password",
+    placeholder: "Minimal 4 karakter",
+  },
 ];
-
-const initialData = [
-  {
-    no: 1,
-    nip: "EMP-001",
-    nama: "Dedi Prasetyo",
-    level: "Admin",
-    username: "dedi.p",
-    email: "dedi.p@company.com",
-    warehouse: "JKT",
-  },
-  {
-    no: 2,
-    nip: "EMP-002",
-    nama: "Rina Marlina",
-    level: "Supervisor",
-    username: "rina.m",
-    email: "rina.m@company.com",
-    warehouse: "SBY",
-  },
-].map((r, i) => ({ ...r, id: i + 1 }));
 
 export default function DataUser() {
   return (
@@ -58,9 +43,10 @@ export default function DataUser() {
       subtitle="Master data pengguna aplikasi"
       columns={columns}
       fields={fields}
-      initialData={initialData}
-      searchableKeys={["nip", "nama", "username", "warehouse"]}
-      emptyForm={{ nip: "", nama: "", level: "", username: "", email: "", warehouse: "" }}
+      idKey="id"
+      api={userApi}
+      searchableKeys={["nip", "nama", "user", "warehouse"]}
+      emptyForm={{ nip: "", nama: "", level: "", user: "", email: "", warehouse: "", password: "" }}
       addLabel="Tambah User"
     />
   );

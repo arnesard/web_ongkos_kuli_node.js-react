@@ -1,27 +1,21 @@
 import CrudPage from "../../components/common/CrudPage";
+import { umApi } from "../../api/endpoints";
 
-// Disamakan dengan components/harga-um-tabel.blade.php
+// Disamakan dengan components/harga-um-tabel.blade.php (data_uang_makan_tbl)
 const columns = [
-  { name: "NO", selector: (r) => r.no, width: "70px" },
   { name: "TAHUN", selector: (r) => r.tahun, sortable: true },
   {
     name: "HARGA UANG MAKAN",
-    selector: (r) => r.harga,
-    format: (r) => `Rp ${Number(r.harga).toLocaleString("id-ID")}`,
+    selector: (r) => r.harga_uang_makan,
+    format: (r) => `Rp ${Number(r.harga_uang_makan).toLocaleString("id-ID")}`,
     sortable: true,
   },
 ];
 
 const fields = [
   { name: "tahun", label: "Tahun", type: "number", required: true },
-  { name: "harga", label: "Harga Uang Makan (Rp)", type: "number", required: true },
+  { name: "harga_uang_makan", label: "Harga Uang Makan (Rp)", type: "number", required: true },
 ];
-
-const initialData = [
-  { no: 1, tahun: 2024, harga: 25000 },
-  { no: 2, tahun: 2025, harga: 28000 },
-  { no: 3, tahun: 2026, harga: 30000 },
-].map((r, i) => ({ ...r, id: i + 1 }));
 
 export default function HargaUm() {
   return (
@@ -30,9 +24,10 @@ export default function HargaUm() {
       subtitle="Master data tarif uang makan kuli per tahun"
       columns={columns}
       fields={fields}
-      initialData={initialData}
+      idKey="id"
+      api={umApi}
       searchableKeys={["tahun"]}
-      emptyForm={{ tahun: new Date().getFullYear(), harga: "" }}
+      emptyForm={{ tahun: new Date().getFullYear(), harga_uang_makan: "" }}
       addLabel="Tambah Tarif"
     />
   );

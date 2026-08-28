@@ -1,29 +1,22 @@
 import CrudPage from "../../components/common/CrudPage";
+import { uangMakanApi } from "../../api/endpoints";
 
-// Disamakan dengan components/uang-makan-input.blade.php
+// Backend join data_transaksi_uangmakankuli_tbl + data_kuli_tbl + harga tahun berjalan
 const columns = [
-  { name: "NO", selector: (r) => r.no, width: "60px" },
-  { name: "TANGGAL", selector: (r) => r.tanggal, sortable: true },
+  { name: "TANGGAL", selector: (r) => r.tgl, sortable: true },
   { name: "ID KULI", selector: (r) => r.id_kuli },
   { name: "NAMA KULI", selector: (r) => r.nama_kuli, grow: 1.2 },
   {
     name: "JUMLAH UANG MAKAN",
-    selector: (r) => r.jumlah,
-    format: (r) => `Rp ${Number(r.jumlah).toLocaleString("id-ID")}`,
+    selector: (r) => r.jumlah_uang_makan,
+    format: (r) => `Rp ${Number(r.jumlah_uang_makan || 0).toLocaleString("id-ID")}`,
   },
 ];
 
 const fields = [
-  { name: "tanggal", label: "Tanggal", type: "date", required: true },
-  { name: "id_kuli", label: "ID Kuli", required: true },
-  { name: "nama_kuli", label: "Nama Kuli", required: true },
-  { name: "jumlah", label: "Jumlah Uang Makan (Rp)", type: "number", required: true },
+  { name: "tgl", label: "Tanggal", type: "date", required: true },
+  { name: "id_kuli", label: "ID Kuli (NIK)", required: true },
 ];
-
-const initialData = [
-  { no: 1, tanggal: "2026-08-25", id_kuli: "KL-001", nama_kuli: "Sutrisno", jumlah: 30000 },
-  { no: 2, tanggal: "2026-08-25", id_kuli: "KL-002", nama_kuli: "Budiman", jumlah: 30000 },
-].map((r, i) => ({ ...r, id: i + 1 }));
 
 export default function UangMakan() {
   return (
@@ -32,9 +25,10 @@ export default function UangMakan() {
       subtitle="Entry ongkos non reguler — transaksi uang makan"
       columns={columns}
       fields={fields}
-      initialData={initialData}
+      idKey="id"
+      api={uangMakanApi}
       searchableKeys={["id_kuli", "nama_kuli"]}
-      emptyForm={{ tanggal: "", id_kuli: "", nama_kuli: "", jumlah: "" }}
+      emptyForm={{ tgl: "", id_kuli: "" }}
       addLabel="Tambah Uang Makan"
     />
   );

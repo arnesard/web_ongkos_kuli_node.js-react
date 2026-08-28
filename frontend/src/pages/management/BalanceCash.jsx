@@ -1,47 +1,61 @@
+import { useEffect, useState } from "react";
+import { Loader2, Wallet, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import NeoTable from "../../components/common/NeoTable";
 import StatCard, { StatGrid } from "../../components/common/StatCard";
-import { Wallet, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { managementApi } from "../../api/endpoints";
 
-// Disamakan dengan components/balance-cash-tabel.blade.php
 const columns = [
-  { name: "NO", selector: (r) => r.no, width: "55px" },
-  { name: "TANGGAL", selector: (r) => r.tanggal, sortable: true },
+  { name: "TANGGAL", selector: (r) => r.tgl, sortable: true },
+  { name: "WAREHOUSE", selector: (r) => r.warehouse, width: "110px" },
   {
-    name: "BON SEMENTARA",
-    selector: (r) => r.bon_sementara,
-    format: (r) => `Rp ${Number(r.bon_sementara).toLocaleString("id-ID")}`,
+    name: "TOTAL BON",
+    selector: (r) => r.total_bon,
+    format: (r) => `Rp ${Number(r.total_bon || 0).toLocaleString("id-ID")}`,
   },
   {
-    name: "TRANSAKSI IN",
-    selector: (r) => r.transaksi_in,
-    format: (r) => `Rp ${Number(r.transaksi_in).toLocaleString("id-ID")}`,
+    name: "TOTAL AKTUAL",
+    selector: (r) => r.total_aktual,
+    format: (r) => `Rp ${Number(r.total_aktual || 0).toLocaleString("id-ID")}`,
   },
   {
     name: "TOTAL TRANSAKSI",
     selector: (r) => r.total_transaksi,
-    format: (r) => `Rp ${Number(r.total_transaksi).toLocaleString("id-ID")}`,
+    format: (r) => `Rp ${Number(r.total_transaksi || 0).toLocaleString("id-ID")}`,
   },
   {
-    name: "BALANCE",
-    selector: (r) => r.balance,
-    cell: (r) => (
-      <span style={{ color: r.balance >= 0 ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
-        Rp {Number(r.balance).toLocaleString("id-ID")}
-      </span>
-    ),
+    name: "BALANCE (BON - TRANSAKSI)",
+    selector: (r) => r.total_bon - r.total_transaksi,
+    cell: (r) => {
+      const balance = Number(r.total_bon || 0) - Number(r.total_transaksi || 0);
+      return (
+        <span style={{ color: balance >= 0 ? "var(--success)" : "var(--danger)", fontWeight: 600 }}>
+          Rp {balance.toLocaleString("id-ID")}
+        </span>
+      );
+    },
   },
-];
-
-const data = [
-  { no: 1, tanggal: "2026-08-24", bon_sementara: 800000, transaksi_in: 500000, total_transaksi: 1300000, balance: -300000 },
-  { no: 2, tanggal: "2026-08-23", bon_sementara: 1200000, transaksi_in: 1400000, total_transaksi: 2600000, balance: 200000 },
 ];
 
 export default function BalanceCash() {
-  const totalBalance = data.reduce((a, b) => a + b.balance, 0);
-  const totalIn = data.reduce((a, b) => a + b.transaksi_in, 0);
-  const totalBon = data.reduce((a, b) => a + b.bon_sementara, 0);
+  const [loading, setLoading] = useState(true);
+  const [rekap, setRekap] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    managementApi
+      .balanceCash()
+      .then((res) => mounted && setRekap(res.rekap || []))
+      .catch((err) => console.error("[BalanceCash]", err))
+      .finally(() => mounted && setLoading(false));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const totalBon = rekap.reduce((a, b) => a + Number(b.total_bon || 0), 0);
+  const totalTransaksi = rekap.reduce((a, b) => a + Number(b.total_transaksi || 0), 0);
+  const totalBalance = totalBon - totalTransaksi;
 
   return (
     <div>
@@ -49,9 +63,9 @@ export default function BalanceCash() {
 
       <StatGrid>
         <StatCard label="Total Bon Sementara" value={`Rp ${totalBon.toLocaleString("id-ID")}`} icon={Wallet} />
-        <StatCard label="Total Transaksi Masuk" value={`Rp ${totalIn.toLocaleString("id-ID")}`} icon={ArrowDownCircle} />
+        <StatCard label="Total Transaksi Aktual" value={`Rp ${totalTransaksi.toLocaleString("id-ID")}`} icon={ArrowDownCircle} />
         <StatCard
-          label="Balance Akhir"
+          label="Balance"
           value={`Rp ${totalBalance.toLocaleString("id-ID")}`}
           icon={ArrowUpCircle}
           trendDown={totalBalance < 0}
@@ -61,9 +75,14 @@ export default function BalanceCash() {
       <div className="glass-card panel">
         <div className="panel-title">
           <h3>Rekap Balance Cash</h3>
-          <span className="hint">Data dummy — akan ditarik dari ManagementController::balanceCash</span>
         </div>
-        <NeoTable columns={columns} data={data} searchableKeys={["tanggal"]} />
+        {loading ? (
+          <div className="empty-state" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Loader2 size={16} className="spin" /> Memuat data...
+          </div>
+        ) : (
+          <NeoTable columns={columns} data={rekap} searchableKeys={["warehouse", "tgl"]} />
+        )}
       </div>
     </div>
   );

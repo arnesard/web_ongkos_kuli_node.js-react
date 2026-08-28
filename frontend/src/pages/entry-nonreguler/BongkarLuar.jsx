@@ -26,15 +26,32 @@ const initialData = [
 
 export default function BongkarLuar() {
   return (
-    <CrudPage
-      title="Bongkar Luar"
-      subtitle="Entry ongkos non reguler — transaksi bongkar muat pihak luar"
-      columns={columns}
-      fields={fields}
-      initialData={initialData}
-      searchableKeys={["nama_kuli", "jenis_kendaraan"]}
-      emptyForm={{ jenis_kendaraan: "", kubikasi: "", nama_kuli: "", total: "" }}
-      addLabel="Tambah Transaksi"
-    />
+    <div>
+      <div
+        className="glass-card"
+        style={{
+          padding: "12px 16px",
+          marginBottom: 16,
+          borderColor: "rgba(255,181,69,0.4)",
+          color: "var(--warning)",
+          fontSize: 13,
+        }}
+      >
+        ⚠️ Halaman ini masih pakai data dummy. Route <code>/bongkar-luar</code> ada di Laravel, tapi controller-nya
+        belum pernah diimplementasikan di project aslinya (tidak ada fungsi <code>bongkarLuar()</code> di
+        OngkosController). Kasih tau skema tabel & business logic yang diinginkan biar bisa dibuatkan endpoint
+        backend-nya.
+      </div>
+      <CrudPage
+        title="Bongkar Luar"
+        subtitle="Entry ongkos non reguler — transaksi bongkar muat pihak luar"
+        columns={columns}
+        fields={fields}
+        initialData={initialData}
+        searchableKeys={["nama_kuli", "jenis_kendaraan"]}
+        emptyForm={{ jenis_kendaraan: "", kubikasi: "", nama_kuli: "", total: "" }}
+        addLabel="Tambah Transaksi"
+      />
+    </div>
   );
 }

@@ -1,44 +1,30 @@
 import CrudPage from "../../components/common/CrudPage";
+import { pemindahanBarangApi } from "../../api/endpoints";
 
-// Disamakan dengan components/pemindahan-barang-input.blade.php
+// Disamakan dengan data_transaksi_pemindahanbarang_tbl
 const columns = [
-  { name: "NO", selector: (r) => r.no, width: "55px" },
-  { name: "TANGGAL", selector: (r) => r.tanggal, sortable: true },
+  { name: "TANGGAL", selector: (r) => r.tgl, sortable: true },
   { name: "LOKASI AWAL", selector: (r) => r.lokasi_awal },
   { name: "TUJUAN", selector: (r) => r.lokasi_tujuan },
+  { name: "JENIS TRUK", selector: (r) => r.jenis_truk },
   { name: "RITASE", selector: (r) => r.ritase, width: "90px" },
-  {
-    name: "TOTAL BIAYA",
-    selector: (r) => r.total_biaya,
-    format: (r) => `Rp ${Number(r.total_biaya).toLocaleString("id-ID")}`,
-  },
+  { name: "NO POLISI", selector: (r) => r.nopol },
+  { name: "DRIVER", selector: (r) => r.driver },
 ];
 
 const fields = [
-  { name: "tanggal", label: "Tanggal", type: "date", required: true },
+  { name: "tgl", label: "Tanggal", type: "date", required: true },
   { name: "lokasi_awal", label: "Lokasi Awal", required: true },
   { name: "lokasi_tujuan", label: "Lokasi Tujuan", required: true },
-  { name: "jenis_kendaraan", label: "Jenis Kendaraan", required: true },
-  { name: "no_polisi", label: "No Polisi", required: true },
-  { name: "nama_supir", label: "Nama Supir", required: true },
+  { name: "jenis_truk", label: "Jenis Kendaraan", required: true },
+  { name: "nopol", label: "No Polisi", required: true },
+  { name: "driver", label: "Nama Driver", required: true },
   { name: "ritase", label: "Ritase", type: "number", required: true },
   { name: "biaya_retribusi", label: "Biaya Retribusi (Rp)", type: "number" },
   { name: "biaya_security", label: "Biaya Security (Rp)", type: "number" },
   { name: "biaya_parkir", label: "Biaya Parkir (Rp)", type: "number" },
-  { name: "uang_jalan", label: "Uang Jalan (Rp)", type: "number" },
-  { name: "total_biaya", label: "Total Biaya (Rp)", type: "number", required: true },
+  { name: "biaya_uangjalan", label: "Uang Jalan (Rp)", type: "number" },
 ];
-
-const initialData = [
-  {
-    no: 1,
-    tanggal: "2026-08-19",
-    lokasi_awal: "Gudang A",
-    lokasi_tujuan: "Gudang C",
-    ritase: 2,
-    total_biaya: 250000,
-  },
-].map((r, i) => ({ ...r, id: i + 1 }));
 
 export default function PemindahanBarang() {
   return (
@@ -47,21 +33,12 @@ export default function PemindahanBarang() {
       subtitle="Entry ongkos non reguler — transaksi pemindahan barang antar lokasi"
       columns={columns}
       fields={fields}
-      initialData={initialData}
+      idKey="id"
+      api={pemindahanBarangApi}
       searchableKeys={["lokasi_awal", "lokasi_tujuan"]}
       emptyForm={{
-        tanggal: "",
-        lokasi_awal: "",
-        lokasi_tujuan: "",
-        jenis_kendaraan: "",
-        no_polisi: "",
-        nama_supir: "",
-        ritase: "",
-        biaya_retribusi: "",
-        biaya_security: "",
-        biaya_parkir: "",
-        uang_jalan: "",
-        total_biaya: "",
+        tgl: "", lokasi_awal: "", lokasi_tujuan: "", jenis_truk: "", nopol: "", driver: "",
+        ritase: "", biaya_retribusi: "", biaya_security: "", biaya_parkir: "", biaya_uangjalan: "",
       }}
       addLabel="Tambah Pemindahan"
     />

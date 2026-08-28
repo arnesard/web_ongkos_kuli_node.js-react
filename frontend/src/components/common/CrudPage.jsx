@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import PageHeader from "./PageHeader";
 import NeoTable from "./NeoTable";
 import NeoModal from "./NeoModal";
@@ -13,11 +13,18 @@ const swalDark = {
 };
 
 /**
- * CrudPage: komponen generik untuk halaman master/entry yang punya pola
- * tabel + tambah/edit/hapus. Saat ini pakai state lokal (mock data) karena
- * fokus di frontend dulu — nanti tinggal ganti `handleCreate/handleUpdate/handleDelete`
- * dengan pemanggilan axios ke endpoint backend Node.js yang query-nya sama
- * dengan controller Laravel terkait.
+ * CrudPage: komponen generik untuk halaman master/entry dengan pola
+ * tabel + tambah/edit/hapus.
+ *
+ * Dua mode:
+ * 1. Mode API (prop `api` diisi) -> data ditarik & disimpan ke backend Node.js beneran.
+ *    api = {
+ *      list: async () => Array<row>,
+ *      create: async (formValues) => void,
+ *      update: async (id, formValues) => void,
+ *      remove: async (id) => void,
+ *    }
+ * 2. Mode mock (prop `initialData` diisi, `api` kosong) -> pakai state lokal saja.
  */
 export default function CrudPage({
   title,
@@ -31,11 +38,38 @@ export default function CrudPage({
   addLabel = "Tambah Data",
   readOnly = false,
   extraToolbar,
+  api = null, // { list, create, update, remove }
 }) {
   const [rows, setRows] = useState(initialData);
+  const [loading, setLoading] = useState(!!api);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!api?.list) return;
+    setLoading(true);
+    try {
+      const data = await api.list();
+      setRows(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("[CrudPage.fetchData]", err);
+      Swal.fire({
+        ...swalDark,
+        icon: "error",
+        title: "Gagal memuat data",
+        text: err.response?.data?.message || "Terjadi kesalahan saat mengambil data dari server.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -51,17 +85,54 @@ export default function CrudPage({
 
   const handleChange = (name, value) => setForm((f) => ({ ...f, [name]: value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editing) {
-      setRows((rs) => rs.map((r) => (r[idKey] === editing[idKey] ? { ...r, ...form } : r)));
-      Swal.fire({ ...swalDark, icon: "success", title: "Data diperbarui", timer: 1300, showConfirmButton: false });
-    } else {
-      const newId = rows.length ? Math.max(...rows.map((r) => Number(r[idKey]) || 0)) + 1 : 1;
-      setRows((rs) => [...rs, { ...form, [idKey]: newId }]);
-      Swal.fire({ ...swalDark, icon: "success", title: "Data tersimpan", timer: 1300, showConfirmButton: false });
+    setSaving(true);
+    try {
+      if (api) {
+        // ---- Mode API asli ----
+        if (editing) {
+          await api.update(editing[idKey], form);
+        } else {
+          await api.create(form);
+        }
+        await fetchData();
+        Swal.fire({
+          ...swalDark,
+          icon: "success",
+          title: editing ? "Data diperbarui" : "Data tersimpan",
+          timer: 1300,
+          showConfirmButton: false,
+        });
+        setModalOpen(false);
+      } else {
+        // ---- Mode mock lokal ----
+        if (editing) {
+          setRows((rs) => rs.map((r) => (r[idKey] === editing[idKey] ? { ...r, ...form } : r)));
+        } else {
+          const newId = rows.length ? Math.max(...rows.map((r) => Number(r[idKey]) || 0)) + 1 : 1;
+          setRows((rs) => [...rs, { ...form, [idKey]: newId }]);
+        }
+        Swal.fire({
+          ...swalDark,
+          icon: "success",
+          title: editing ? "Data diperbarui" : "Data tersimpan",
+          timer: 1300,
+          showConfirmButton: false,
+        });
+        setModalOpen(false);
+      }
+    } catch (err) {
+      console.error("[CrudPage.handleSubmit]", err);
+      Swal.fire({
+        ...swalDark,
+        icon: "error",
+        title: "Gagal menyimpan",
+        text: err.response?.data?.message || "Terjadi kesalahan saat menyimpan data.",
+      });
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
   };
 
   const handleDelete = (row) => {
@@ -74,10 +145,24 @@ export default function CrudPage({
       confirmButtonText: "Ya, hapus",
       cancelButtonText: "Batal",
       confirmButtonColor: "#ff5470",
-    }).then((res) => {
-      if (res.isConfirmed) {
-        setRows((rs) => rs.filter((r) => r[idKey] !== row[idKey]));
+    }).then(async (res) => {
+      if (!res.isConfirmed) return;
+      try {
+        if (api) {
+          await api.remove(row[idKey]);
+          await fetchData();
+        } else {
+          setRows((rs) => rs.filter((r) => r[idKey] !== row[idKey]));
+        }
         Swal.fire({ ...swalDark, icon: "success", title: "Data dihapus", timer: 1200, showConfirmButton: false });
+      } catch (err) {
+        console.error("[CrudPage.handleDelete]", err);
+        Swal.fire({
+          ...swalDark,
+          icon: "error",
+          title: "Gagal menghapus",
+          text: err.response?.data?.message || "Terjadi kesalahan saat menghapus data.",
+        });
       }
     });
   };
@@ -120,12 +205,18 @@ export default function CrudPage({
       />
 
       <div className="glass-card panel">
-        <NeoTable
-          columns={tableColumns}
-          data={rows}
-          searchableKeys={searchableKeys}
-          toolbarLeft={extraToolbar}
-        />
+        {loading ? (
+          <div className="empty-state" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Loader2 size={16} className="spin" /> Memuat data...
+          </div>
+        ) : (
+          <NeoTable
+            columns={tableColumns}
+            data={rows}
+            searchableKeys={searchableKeys}
+            toolbarLeft={extraToolbar}
+          />
+        )}
       </div>
 
       <NeoModal open={modalOpen} title={editing ? `Edit ${title}` : addLabel} onClose={() => setModalOpen(false)}>
@@ -134,11 +225,11 @@ export default function CrudPage({
             <FormField key={field.name} field={field} value={form[field.name]} onChange={handleChange} />
           ))}
           <div className="modal-footer">
-            <button type="button" className="btn-neo ghost" onClick={() => setModalOpen(false)}>
+            <button type="button" className="btn-neo ghost" onClick={() => setModalOpen(false)} disabled={saving}>
               Batal
             </button>
-            <button type="submit" className="btn-neo primary">
-              Simpan
+            <button type="submit" className="btn-neo primary" disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
         </form>

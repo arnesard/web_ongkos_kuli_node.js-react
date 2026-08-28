@@ -1,49 +1,44 @@
 import CrudPage from "../../components/common/CrudPage";
+import { bongkarRmApi } from "../../api/endpoints";
 
-// Disamakan dengan components/bongkar-rm-tabel.blade.php
+// Disamakan dengan data_transaksi_tbl (join data_barang_tbl -> ongkos)
 const columns = [
-  { name: "NO", selector: (r) => r.no, width: "55px" },
-  { name: "TANGGAL", selector: (r) => r.tanggal, sortable: true },
-  { name: "MARKET", selector: (r) => r.market },
-  { name: "CUSTOMER", selector: (r) => r.customer, grow: 1.4 },
+  { name: "TANGGAL", selector: (r) => r.tgl, sortable: true },
+  { name: "MARKET", selector: (r) => r.market, width: "100px" },
+  { name: "CUSTOMER", selector: (r) => r.customer, grow: 1.3 },
   { name: "NO. TRIP", selector: (r) => r.no_trip },
-  { name: "JENIS TRUK", selector: (r) => r.jenis_truk },
-  { name: "NO POLISI", selector: (r) => r.no_polisi },
-  { name: "GUDANG", selector: (r) => r.gudang },
+  { name: "JENIS BARANG", selector: (r) => r.jenis_truk },
+  { name: "NO POLISI", selector: (r) => r.nopol },
+  { name: "QTY", selector: (r) => r.qty_truk, width: "80px" },
   {
-    name: "NILAI (RP)",
-    selector: (r) => r.nilai,
-    format: (r) => `Rp ${Number(r.nilai).toLocaleString("id-ID")}`,
+    name: "TOTAL BIAYA",
+    selector: (r) => r.total_biaya,
+    format: (r) => `Rp ${Number(r.total_biaya || 0).toLocaleString("id-ID")}`,
   },
-  { name: "TOTAL KULI", selector: (r) => r.total_kuli, width: "100px" },
 ];
 
 const fields = [
-  { name: "tanggal", label: "Tanggal", type: "date", required: true },
-  { name: "market", label: "Market", required: true },
-  { name: "customer", label: "Customer", required: true },
-  { name: "no_trip", label: "No. Trip", required: true },
-  { name: "jenis_truk", label: "Jenis Truk", required: true },
-  { name: "no_polisi", label: "No Polisi", required: true },
-  { name: "gudang", label: "Gudang", required: true },
-  { name: "nilai", label: "Nilai (Rp)", type: "number", required: true },
-  { name: "total_kuli", label: "Total Kuli", type: "number", required: true },
-];
-
-const initialData = [
+  { name: "tgl", label: "Tanggal", type: "date", required: true },
   {
-    no: 1,
-    tanggal: "2026-08-22",
-    market: "Ekspor",
-    customer: "PT Cahaya Abadi",
-    no_trip: "TRP-2003",
-    jenis_truk: "Colt Diesel",
-    no_polisi: "D 5678 ABC",
-    gudang: "RM-2",
-    nilai: 300000,
-    total_kuli: 3,
+    name: "market",
+    label: "Market",
+    type: "select",
+    required: true,
+    options: ["Lokal", "Export", "Import"],
   },
-].map((r, i) => ({ ...r, id: i + 1 }));
+  { name: "customer", label: "Customer", required: true },
+  { name: "kota", label: "Kota Asal", required: true },
+  { name: "jam_bongkar", label: "Jam Bongkar", type: "time", required: true },
+  { name: "no_trip", label: "No. Trip (tanpa suffix Z)", required: true },
+  { name: "qty_truk", label: "Qty", type: "number", required: true },
+  { name: "jenis_truk", label: "Jenis Barang RM", required: true },
+  { name: "pa", label: "PA", required: true },
+  { name: "nopol", label: "No Polisi", required: true },
+  { name: "driver", label: "Nama Driver", required: true },
+  { name: "jam_masuk", label: "Jam Masuk", type: "time", required: true },
+  { name: "id_kuli", label: "ID Kuli", required: true },
+  { name: "ket", label: "Keterangan" },
+];
 
 export default function BongkarRm() {
   return (
@@ -52,18 +47,12 @@ export default function BongkarRm() {
       subtitle="Entry ongkos reguler — transaksi bongkar barang mentah (RM)"
       columns={columns}
       fields={fields}
-      initialData={initialData}
-      searchableKeys={["customer", "no_trip", "no_polisi"]}
+      idKey="id"
+      api={bongkarRmApi}
+      searchableKeys={["customer", "no_trip", "nopol"]}
       emptyForm={{
-        tanggal: "",
-        market: "",
-        customer: "",
-        no_trip: "",
-        jenis_truk: "",
-        no_polisi: "",
-        gudang: "",
-        nilai: "",
-        total_kuli: "",
+        tgl: "", market: "", customer: "", kota: "", jam_bongkar: "", no_trip: "",
+        qty_truk: "", jenis_truk: "", pa: "", nopol: "", driver: "", jam_masuk: "", id_kuli: "", ket: "",
       }}
       addLabel="Tambah Transaksi Bongkar RM"
     />

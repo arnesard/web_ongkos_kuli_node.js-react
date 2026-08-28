@@ -1,44 +1,33 @@
 import CrudPage from "../../components/common/CrudPage";
+import { kuliApi } from "../../api/endpoints";
 
-// Kolom & field ini disamakan dengan components/daftar-kuli-tabel.blade.php
+function calcUsia(tglLahir) {
+  if (!tglLahir) return "-";
+  const birth = new Date(tglLahir);
+  if (isNaN(birth.getTime())) return "-";
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+// Kolom & field disamakan dengan skema asli data_kuli_tbl:
+// nik, nama_kuli, status (dipakai sbg tanggal lahir!), warehouse
 const columns = [
-  { name: "NO", selector: (r) => r.no, width: "70px" },
-  { name: "ID KULI", selector: (r) => r.id_kuli, sortable: true },
-  { name: "NAMA KULI", selector: (r) => r.nama_kuli, sortable: true },
-  {
-    name: "STATUS",
-    selector: (r) => r.status,
-    cell: (r) => (
-      <span className={`badge-neo ${r.status === "Aktif" ? "success" : "danger"}`}>{r.status}</span>
-    ),
-  },
-  { name: "BAGIAN", selector: (r) => r.bagian, sortable: true },
+  { name: "NIK", selector: (r) => r.nik, sortable: true },
+  { name: "NAMA KULI", selector: (r) => r.nama_kuli, sortable: true, grow: 1.4 },
+  { name: "TGL LAHIR", selector: (r) => r.status, width: "120px" },
+  { name: "USIA", selector: (r) => calcUsia(r.status), width: "80px" },
+  { name: "WAREHOUSE", selector: (r) => r.warehouse, sortable: true },
 ];
 
 const fields = [
-  { name: "id_kuli", label: "ID Kuli", required: true },
+  { name: "nik", label: "NIK / ID Kuli", required: true },
   { name: "nama_kuli", label: "Nama Kuli", required: true },
-  {
-    name: "status",
-    label: "Status",
-    type: "select",
-    required: true,
-    options: ["Aktif", "Non Aktif"],
-  },
-  {
-    name: "bagian",
-    label: "Bagian",
-    type: "select",
-    required: true,
-    options: ["FG Warehouse", "RM Warehouse", "Non Reguler"],
-  },
+  { name: "status", label: "Tanggal Lahir", type: "date", required: true },
+  { name: "warehouse", label: "Warehouse", required: true },
 ];
-
-const initialData = [
-  { no: 1, id_kuli: "KL-001", nama_kuli: "Sutrisno", status: "Aktif", bagian: "FG Warehouse" },
-  { no: 2, id_kuli: "KL-002", nama_kuli: "Budiman", status: "Aktif", bagian: "RM Warehouse" },
-  { no: 3, id_kuli: "KL-003", nama_kuli: "Agus Salim", status: "Non Aktif", bagian: "FG Warehouse" },
-].map((r, i) => ({ ...r, id: i + 1 }));
 
 export default function DaftarKuli() {
   return (
@@ -47,9 +36,10 @@ export default function DaftarKuli() {
       subtitle="Master data kuli / tenaga bongkar muat"
       columns={columns}
       fields={fields}
-      initialData={initialData}
-      searchableKeys={["id_kuli", "nama_kuli", "bagian"]}
-      emptyForm={{ id_kuli: "", nama_kuli: "", status: "Aktif", bagian: "" }}
+      idKey="id"
+      api={kuliApi}
+      searchableKeys={["nik", "nama_kuli", "warehouse"]}
+      emptyForm={{ nik: "", nama_kuli: "", status: "", warehouse: "" }}
       addLabel="Tambah Kuli"
     />
   );
