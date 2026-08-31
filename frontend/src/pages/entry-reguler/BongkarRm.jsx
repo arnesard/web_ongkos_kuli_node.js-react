@@ -43,6 +43,7 @@ const fields = [
 export default function BongkarRm() {
   return (
     <CrudPage
+      wide
       title="Bongkar Muat Barang RM Warehouse"
       subtitle="Entry ongkos reguler — transaksi bongkar barang mentah (RM)"
       columns={columns}

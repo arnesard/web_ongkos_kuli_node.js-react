@@ -21,6 +21,7 @@ const fields = [
 export default function UangMakan() {
   return (
     <CrudPage
+      wide
       title="Uang Makan Kuli"
       subtitle="Entry ongkos non reguler — transaksi uang makan"
       columns={columns}

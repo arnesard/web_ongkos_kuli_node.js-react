@@ -15,6 +15,8 @@ export const navConfig = [
     key: "entry-reguler",
     label: "Entry Ongkos Reguler",
     icon: "ClipboardList",
+    // Sesuai matrix akses: role SH cuma lihat Dashboard & Management
+    hideForRoles: ["SH"],
     children: [
       { key: "bon-sementara", label: "Permintaan Bon Sementara", path: "/bon-sementara" },
       { key: "muat-fg", label: "Muat Barang FG Warehouse", path: "/muat-fg" },
@@ -26,6 +28,7 @@ export const navConfig = [
     key: "entry-nonreguler",
     label: "Entry Ongkos Non Reguler",
     icon: "PackagePlus",
+    hideForRoles: ["SH"],
     children: [
       { key: "uang-makan", label: "Uang Makan Kuli", path: "/uang-makan" },
       { key: "susun-tire", label: "Susun Tire Lantai/Rak", path: "/susun-tire" },
@@ -49,6 +52,7 @@ export const navConfig = [
     key: "master",
     label: "Master Data",
     icon: "Database",
+    hideForRoles: ["SH"],
     children: [
       { key: "daftar-kuli", label: "Daftar Nama Kuli", path: "/daftar-kuli" },
       { key: "harga-um", label: "Harga Uang Makan", path: "/harga-um" },

@@ -39,6 +39,7 @@ export default function CrudPage({
   readOnly = false,
   extraToolbar,
   api = null, // { list, create, update, remove }
+  wide = false, // modal lebar + form 2 kolom, buat field yang banyak biar gak perlu scroll
 }) {
   const [rows, setRows] = useState(initialData);
   const [loading, setLoading] = useState(!!api);
@@ -219,11 +220,18 @@ export default function CrudPage({
         )}
       </div>
 
-      <NeoModal open={modalOpen} title={editing ? `Edit ${title}` : addLabel} onClose={() => setModalOpen(false)}>
+      <NeoModal
+        open={modalOpen}
+        title={editing ? `Edit ${title}` : addLabel}
+        onClose={() => setModalOpen(false)}
+        width={wide ? 880 : 560}
+      >
         <form className="form-neo" onSubmit={handleSubmit}>
-          {fields.map((field) => (
-            <FormField key={field.name} field={field} value={form[field.name]} onChange={handleChange} />
-          ))}
+          <div className={wide ? "field-grid-2" : undefined}>
+            {fields.map((field) => (
+              <FormField key={field.name} field={field} value={form[field.name]} onChange={handleChange} />
+            ))}
+          </div>
           <div className="modal-footer">
             <button type="button" className="btn-neo ghost" onClick={() => setModalOpen(false)} disabled={saving}>
               Batal

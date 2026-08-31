@@ -28,7 +28,11 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const activeGroupKey = navConfig.find(
+  const visibleNav = navConfig.filter(
+    (item) => !(item.hideForRoles || []).includes(user?.level),
+  );
+
+  const activeGroupKey = visibleNav.find(
     (g) =>
       g.type === "group" &&
       g.children.some((c) => c.path === location.pathname),
@@ -53,7 +57,7 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
   };
 
   return (
-    <aside className={`sidebar${open ? " open" : ""}`}>
+    <aside className={`sidebar${open ? "" : " collapsed"}`}>
       <div className="sidebar-brand">
         <div className="brand-mark">
           <img src="/images/logo-gt.png" alt="Logo GT" width={40} height={40} />
@@ -67,7 +71,7 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
       </div>
 
       <nav className="sidebar-nav">
-        {navConfig.map((item) => {
+        {visibleNav.map((item) => {
           if (item.type === "single") {
             const Icon = ICONS[item.icon];
             return (

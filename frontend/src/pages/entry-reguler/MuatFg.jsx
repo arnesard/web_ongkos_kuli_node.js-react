@@ -46,6 +46,7 @@ const fields = [
 export default function MuatFg() {
   return (
     <CrudPage
+      wide
       title="Muat Barang FG Warehouse"
       subtitle="Entry ongkos reguler — transaksi muat barang jadi (FG)"
       columns={columns}

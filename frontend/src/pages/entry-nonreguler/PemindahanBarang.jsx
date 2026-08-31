@@ -29,6 +29,7 @@ const fields = [
 export default function PemindahanBarang() {
   return (
     <CrudPage
+      wide
       title="Pemindahan Barang"
       subtitle="Entry ongkos non reguler — transaksi pemindahan barang antar lokasi"
       columns={columns}

@@ -43,6 +43,7 @@ export default function BongkarLuar() {
         backend-nya.
       </div>
       <CrudPage
+        wide
         title="Bongkar Luar"
         subtitle="Entry ongkos non reguler — transaksi bongkar muat pihak luar"
         columns={columns}

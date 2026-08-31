@@ -38,6 +38,7 @@ const fields = [
 export default function BonSementara() {
   return (
     <CrudPage
+      wide
       title="Permintaan Bon Sementara"
       subtitle="Entry ongkos reguler — pengajuan & realisasi bon sementara"
       columns={columns}

@@ -31,6 +31,7 @@ const fields = [
 export default function SusunTire() {
   return (
     <CrudPage
+      wide
       title="Susun Tire Lantai / Rak"
       subtitle="Entry ongkos non reguler — transaksi susun tire"
       columns={columns}

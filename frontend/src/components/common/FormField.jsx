@@ -11,7 +11,7 @@ export default function FormField({ field, value, onChange }) {
   };
 
   return (
-    <div className="field">
+    <div className={`field${type === "textarea" ? " field-full" : ""}`}>
       <label htmlFor={name}>
         {label} {required && <span style={{ color: "var(--danger)" }}>*</span>}
       </label>

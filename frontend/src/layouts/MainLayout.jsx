@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Topbar from "../components/layout/Topbar";
 import { navConfig } from "../config/navConfig";
+
+const SIDEBAR_KEY = "loli_sidebar_open";
 
 function findPageMeta(pathname) {
   for (const item of navConfig) {
@@ -18,15 +20,25 @@ function findPageMeta(pathname) {
 }
 
 export default function MainLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Ingat pilihan terakhir user (hide/unhide) lewat localStorage.
+  // Default: kebuka di layar lebar, ketutup otomatis di layar sempit (<=1100px).
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_KEY);
+    if (saved !== null) return saved === "1";
+    return typeof window !== "undefined" ? window.innerWidth > 1100 : true;
+  });
   const location = useLocation();
   const meta = findPageMeta(location.pathname);
 
   // TODO (fase backend): ambil dari API notifikasi approval pending
   const pendingCount = 3;
 
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_KEY, sidebarOpen ? "1" : "0");
+  }, [sidebarOpen]);
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarOpen ? "" : " sidebar-hidden"}`}>
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -36,6 +48,7 @@ export default function MainLayout() {
         <Topbar
           title={meta.title}
           subtitle={meta.subtitle}
+          sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((s) => !s)}
         />
         <main className="page-body">

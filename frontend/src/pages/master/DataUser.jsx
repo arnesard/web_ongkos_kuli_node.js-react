@@ -39,6 +39,7 @@ const fields = [
 export default function DataUser() {
   return (
     <CrudPage
+      wide
       title="Data User"
       subtitle="Master data pengguna aplikasi"
       columns={columns}
