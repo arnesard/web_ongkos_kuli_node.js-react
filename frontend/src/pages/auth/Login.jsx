@@ -84,7 +84,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="login-footer">© 2026 SCM & Logistic Department </div>
+        <div className="login-footer">© 2025</div>
       </div>
     </div>
   );
