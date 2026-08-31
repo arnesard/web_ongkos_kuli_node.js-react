@@ -79,12 +79,13 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
                 key={item.key}
                 to={item.path}
                 onClick={onClose}
+                title={item.label}
                 className={({ isActive }) =>
                   `nav-single${isActive ? " active" : ""}`
                 }
               >
                 <Icon size={17} />
-                {item.label}
+                <span className="nav-label">{item.label}</span>
               </NavLink>
             );
           }
@@ -100,11 +101,12 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
             <div className="nav-group" key={item.key}>
               <button
                 type="button"
+                title={item.label}
                 className={`nav-group-btn${isGroupActive ? " active" : ""}`}
                 onClick={() => setOpenGroup(isOpen ? null : item.key)}
               >
                 <Icon size={17} />
-                {item.label}
+                <span className="nav-label">{item.label}</span>
                 {showBadge && (
                   <span className="badge-count">{pendingCount}</span>
                 )}
@@ -123,7 +125,7 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
                       `nav-sublink${isActive ? " active" : ""}`
                     }
                   >
-                    {child.label}
+                    <span className="nav-label">{child.label}</span>
                     {child.key === "approve-bongkarmuat" &&
                       pendingCount > 0 && (
                         <span className="badge-count">{pendingCount}</span>
@@ -143,7 +145,7 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
           onClick={handleLogout}
         >
           <LogOut size={16} />
-          Logout
+          <span className="nav-label">Logout</span>
         </button>
       </div>
     </aside>
