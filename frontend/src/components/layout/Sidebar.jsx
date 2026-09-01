@@ -27,7 +27,12 @@ const ICONS = {
 // open: true = sidebar penuh (lengkap teks). false = mengecil (icon doang).
 // onExpand: dipanggil buat melebarin sidebar (klik item apapun pas lagi kecil).
 // onCollapse: dipanggil setelah navigasi lewat menu (klik item pas lagi lebar).
-export default function Sidebar({ open, onExpand, onCollapse, pendingCount = 0 }) {
+export default function Sidebar({
+  open,
+  onExpand,
+  onCollapse,
+  pendingCount = 0,
+}) {
   const location = useLocation();
   const { user, logout } = useAuth();
 
@@ -59,8 +64,17 @@ export default function Sidebar({ open, onExpand, onCollapse, pendingCount = 0 }
     });
   };
 
+  // Pas lagi kecil (collapsed), klik di mana aja area sidebar langsung melebarin,
+  // nggak perlu pas-pasan ngeklik iconnya doang.
+  const handleSidebarClick = () => {
+    if (!open) onExpand();
+  };
+
   return (
-    <aside className={`sidebar${open ? "" : " collapsed"}`}>
+    <aside
+      className={`sidebar${open ? "" : " collapsed"}`}
+      onClick={handleSidebarClick}
+    >
       <div className="sidebar-brand">
         <div className="brand-mark">
           <img src="/images/logo-gt.png" alt="Logo GT" width={40} height={40} />
@@ -167,9 +181,12 @@ export default function Sidebar({ open, onExpand, onCollapse, pendingCount = 0 }
         <button
           className="btn-neo danger"
           style={{ width: "100%", justifyContent: "center" }}
-          onClick={handleLogout}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLogout();
+          }}
         >
-          <LogOut size={16} />
+          <LogOut size={16} style={{ transform: "scaleX(-1)" }} />
           <span className="nav-label">Logout</span>
         </button>
       </div>
