@@ -3,8 +3,50 @@ import DataTable from "react-data-table-component";
 import { Search } from "lucide-react";
 
 const customStyles = {
-  headCells: { style: { paddingTop: 12, paddingBottom: 12 } },
+  headRow: {
+    style: {
+      backgroundColor: "rgba(16, 26, 51, 0.7)",
+      borderBottomColor: "var(--glass-border)",
+      minHeight: "44px",
+    },
+  },
+  headCells: {
+    style: {
+      color: "var(--text-secondary)",
+      fontSize: "11.5px",
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.04em",
+      paddingTop: 12,
+      paddingBottom: 12,
+    },
+  },
+  rows: {
+    style: {
+      backgroundColor: "transparent",
+      color: "var(--text-primary)",
+      fontSize: "13.5px",
+      minHeight: "48px",
+      borderBottomColor: "rgba(90, 150, 255, 0.08)",
+    },
+    // ini kuncinya: react-data-table-component nge-generate style hover-nya sendiri
+    // (default abu-abu terang) lewat styled-components, yang kadang menang dari CSS
+    // kita di App.css. Override resminya harus lewat customStyles, bukan CSS biasa.
+    highlightOnHoverStyle: {
+      backgroundColor: "rgba(47, 125, 255, 0.10)",
+      color: "var(--text-primary)",
+      transitionDuration: "0.15s",
+      outlineStyle: "none",
+    },
+  },
   cells: { style: { paddingTop: 10, paddingBottom: 10 } },
+  pagination: {
+    style: {
+      backgroundColor: "transparent",
+      color: "var(--text-secondary)",
+      borderTopColor: "var(--glass-border)",
+    },
+  },
 };
 
 export default function NeoTable({

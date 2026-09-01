@@ -25,6 +25,16 @@ export const bonSementaraApi = {
   // override list: backend bon-sementara balikin objek { data, noDocs, ... }, bukan array langsung
   list: async (params) => (await api.get("/entry-reguler/bon-sementara", { params })).data.data.data,
   inputAktual: async (payload) => (await api.post("/entry-reguler/bon-sementara/input-aktual", payload)).data,
+  // cari by no_doc -> butuh payload penuh (dataCari, totalNilai, totalActNilai, statusBS),
+  // makanya nggak pakai `list()` di atas yang cuma ambil `.data.data.data`
+  cariNoDoc: async (no_doc) =>
+    (await api.get("/entry-reguler/bon-sementara", { params: { cari: 1, no_doc } })).data.data,
+  // daftar no_doc yang sudah pernah diinput (buat dropdown/combobox), di-scope warehouse otomatis di backend
+  noDocs: async () => (await api.get("/entry-reguler/bon-sementara")).data.data.noDocs,
+  // data terbaru buat default tampilan modal cari (nggak kosong pas dibuka), opsional filter bulanKode (YYYY-MM,
+  // dicocokin ke ekor no_doc format "/MM/YYYY", bukan kolom tgl)
+  recent: async ({ limit = 20, bulanKode } = {}) =>
+    (await api.get("/entry-reguler/bon-sementara/recent", { params: { limit, bulanKode } })).data.data.data,
 };
 
 export const muatFgApi = {

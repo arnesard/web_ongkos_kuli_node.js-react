@@ -24,7 +24,10 @@ const ICONS = {
   LifeBuoy,
 };
 
-export default function Sidebar({ open, onClose, pendingCount = 0 }) {
+// open: true = sidebar penuh (lengkap teks). false = mengecil (icon doang).
+// onExpand: dipanggil buat melebarin sidebar (klik item apapun pas lagi kecil).
+// onCollapse: dipanggil setelah navigasi lewat menu (klik item pas lagi lebar).
+export default function Sidebar({ open, onExpand, onCollapse, pendingCount = 0 }) {
   const location = useLocation();
   const { user, logout } = useAuth();
 
@@ -74,14 +77,34 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
         {visibleNav.map((item) => {
           if (item.type === "single") {
             const Icon = ICONS[item.icon];
+            const isActive = location.pathname === item.path;
+
+            // Sidebar lagi kecil -> klik cuma buat melebarin, BUKAN navigasi
+            // (biar nggak kepencet nyasar pas lagi mode icon-only).
+            if (!open) {
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  title={item.label}
+                  className={`nav-single${isActive ? " active" : ""}`}
+                  onClick={onExpand}
+                >
+                  <Icon size={17} />
+                  <span className="nav-label">{item.label}</span>
+                </button>
+              );
+            }
+
+            // Sidebar lagi lebar -> navigasi beneran, terus otomatis mengecil lagi
             return (
               <NavLink
                 key={item.key}
                 to={item.path}
-                onClick={onClose}
                 title={item.label}
-                className={({ isActive }) =>
-                  `nav-single${isActive ? " active" : ""}`
+                onClick={onCollapse}
+                className={({ isActive: navActive }) =>
+                  `nav-single${navActive ? " active" : ""}`
                 }
               >
                 <Icon size={17} />
@@ -103,7 +126,9 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
                 type="button"
                 title={item.label}
                 className={`nav-group-btn${isGroupActive ? " active" : ""}`}
-                onClick={() => setOpenGroup(isOpen ? null : item.key)}
+                onClick={() =>
+                  open ? setOpenGroup(isOpen ? null : item.key) : onExpand()
+                }
               >
                 <Icon size={17} />
                 <span className="nav-label">{item.label}</span>
@@ -120,7 +145,7 @@ export default function Sidebar({ open, onClose, pendingCount = 0 }) {
                   <NavLink
                     key={child.key}
                     to={child.path}
-                    onClick={onClose}
+                    onClick={onCollapse}
                     className={({ isActive }) =>
                       `nav-sublink${isActive ? " active" : ""}`
                     }

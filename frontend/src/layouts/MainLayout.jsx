@@ -20,8 +20,8 @@ function findPageMeta(pathname) {
 }
 
 export default function MainLayout() {
-  // Ingat pilihan terakhir user (hide/unhide) lewat localStorage.
-  // Default: kebuka di layar lebar, ketutup otomatis di layar sempit (<=1100px).
+  // Ingat pilihan terakhir user (lebar/kecil) lewat localStorage.
+  // Default: kebuka lebar di layar lebar, otomatis kecil di layar sempit (<=1100px).
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY);
     if (saved !== null) return saved === "1";
@@ -38,19 +38,15 @@ export default function MainLayout() {
   }, [sidebarOpen]);
 
   return (
-    <div className={`app-shell${sidebarOpen ? "" : " sidebar-hidden"}`}>
+    <div className={`app-shell${sidebarOpen ? "" : " sidebar-collapsed-shell"}`}>
       <Sidebar
         open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        onExpand={() => setSidebarOpen(true)}
+        onCollapse={() => setSidebarOpen(false)}
         pendingCount={pendingCount}
       />
       <div className="content-area">
-        <Topbar
-          title={meta.title}
-          subtitle={meta.subtitle}
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen((s) => !s)}
-        />
+        <Topbar title={meta.title} subtitle={meta.subtitle} />
         <main className="page-body">
           <Outlet />
         </main>

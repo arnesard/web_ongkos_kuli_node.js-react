@@ -40,6 +40,8 @@ export default function CrudPage({
   extraToolbar,
   api = null, // { list, create, update, remove }
   wide = false, // modal lebar + form 2 kolom, buat field yang banyak biar gak perlu scroll
+  renderActions, // opsional: (row, { onEdit, onDelete }) => JSX — override tombol action per-baris
+  headerActions, // opsional: JSX tombol tambahan, dirender di header sebelah tombol utama (addLabel)
 }) {
   const [rows, setRows] = useState(initialData);
   const [loading, setLoading] = useState(!!api);
@@ -176,16 +178,19 @@ export default function CrudPage({
           {
             name: "ACTION",
             width: "110px",
-            cell: (row) => (
-              <div className="row-actions">
-                <button className="icon-btn" title="Edit" onClick={() => openEdit(row)}>
-                  <Pencil size={14} />
-                </button>
-                <button className="icon-btn danger" title="Hapus" onClick={() => handleDelete(row)}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ),
+            cell: (row) =>
+              renderActions ? (
+                renderActions(row, { onEdit: () => openEdit(row), onDelete: () => handleDelete(row) })
+              ) : (
+                <div className="row-actions">
+                  <button className="icon-btn" title="Edit" onClick={() => openEdit(row)}>
+                    <Pencil size={14} />
+                  </button>
+                  <button className="icon-btn danger" title="Hapus" onClick={() => handleDelete(row)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ),
           },
         ]),
   ];
@@ -196,12 +201,15 @@ export default function CrudPage({
         title={title}
         subtitle={subtitle}
         actions={
-          !readOnly && (
-            <button className="btn-neo primary" onClick={openCreate}>
-              <Plus size={16} />
-              {addLabel}
-            </button>
-          )
+          <>
+            {headerActions}
+            {!readOnly && (
+              <button className="btn-neo primary" onClick={openCreate}>
+                <Plus size={16} />
+                {addLabel}
+              </button>
+            )}
+          </>
         }
       />
 

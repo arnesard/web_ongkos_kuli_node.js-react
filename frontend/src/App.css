@@ -21,12 +21,31 @@
   transition: width 0.25s ease, opacity 0.2s ease, border-color 0.2s ease;
 }
 .sidebar.collapsed {
-  width: 0;
-  min-width: 0;
-  opacity: 0;
-  overflow: hidden;
-  border-right-color: transparent;
-  pointer-events: none;
+  width: 76px;
+  min-width: 76px;
+}
+.sidebar.collapsed .sidebar-brand {
+  padding: 20px 8px 14px;
+}
+.sidebar.collapsed .sidebar-brand h1,
+.sidebar.collapsed .sidebar-brand p,
+.sidebar.collapsed .sidebar-user,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .badge-count,
+.sidebar.collapsed .chevron,
+.sidebar.collapsed .nav-subitems {
+  display: none;
+}
+.sidebar.collapsed .nav-single,
+.sidebar.collapsed .nav-group-btn {
+  justify-content: center;
+  padding: 12px 0;
+}
+.sidebar.collapsed .sidebar-logout {
+  padding: 14px 10px;
+}
+.sidebar.collapsed .sidebar-logout .btn-neo {
+  padding: 10px;
 }
 
 .sidebar-brand {

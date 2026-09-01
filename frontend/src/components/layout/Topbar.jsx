@@ -1,8 +1,8 @@
-import { PanelLeftClose, PanelLeftOpen, Wifi, Clock } from "lucide-react";
+import { User, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 
-export default function Topbar({ title, subtitle, sidebarOpen, onToggleSidebar }) {
+export default function Topbar({ title, subtitle }) {
   const { user } = useAuth();
   const [now, setNow] = useState(new Date());
 
@@ -14,14 +14,6 @@ export default function Topbar({ title, subtitle, sidebarOpen, onToggleSidebar }
   return (
     <header className="topbar">
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          className="menu-toggle"
-          onClick={onToggleSidebar}
-          aria-label={sidebarOpen ? "Sembunyikan menu" : "Tampilkan menu"}
-          title={sidebarOpen ? "Sembunyikan menu" : "Tampilkan menu"}
-        >
-          {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-        </button>
         <div>
           <h2>{title}</h2>
           {subtitle && <div className="topbar-sub">{subtitle}</div>}
@@ -39,7 +31,7 @@ export default function Topbar({ title, subtitle, sidebarOpen, onToggleSidebar }
           {user?.warehouse || "Warehouse"}
         </div>
         <div className="topbar-chip">
-          <Wifi size={14} />
+          <User size={14} />
           {user?.nama || "Guest"}
         </div>
       </div>

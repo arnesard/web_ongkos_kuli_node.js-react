@@ -9,6 +9,7 @@ const bongkarRm = require("../controllers/entry-reguler/bongkarRmController");
 router.use(verifyToken);
 
 // --- Bon Sementara ---
+router.get("/bon-sementara/recent", bonSementara.recent);
 router.get("/bon-sementara", bonSementara.list);
 router.post("/bon-sementara", bonSementara.create);
 router.put("/bon-sementara/:id", bonSementara.update);

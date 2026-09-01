@@ -1,3 +1,5 @@
+import Combobox from "./Combobox";
+
 export default function FormField({ field, value, onChange }) {
   const { name, label, type = "text", options = [], required, placeholder, step } = field;
 
@@ -24,6 +26,16 @@ export default function FormField({ field, value, onChange }) {
             </option>
           ))}
         </select>
+      ) : type === "combobox" ? (
+        <Combobox
+          id={name}
+          name={name}
+          value={value}
+          onChange={onChange}
+          options={options}
+          placeholder={placeholder || label}
+          required={required}
+        />
       ) : type === "textarea" ? (
         <textarea rows={3} {...commonProps} />
       ) : (
