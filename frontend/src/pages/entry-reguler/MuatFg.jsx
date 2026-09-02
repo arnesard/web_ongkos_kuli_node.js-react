@@ -10,9 +10,10 @@ import {
   RefreshCw,
   Loader2,
   FileSpreadsheet,
+  Check,
 } from "lucide-react";
-import PageHeader from "../../components/common/PageHeader";
 import Combobox from "../../components/common/Combobox";
+import SelectNeo from "../../components/common/SelectNeo";
 import { muatFgApi, lookupApi } from "../../api/endpoints";
 
 // ==========================================================================
@@ -84,7 +85,8 @@ export default function MuatFg() {
   const [cityList, setCityList] = useState([]);
   const [jenisTrukList, setJenisTrukList] = useState([]);
   const [kuliList, setKuliList] = useState([]);
-  const [kuliInputText, setKuliInputText] = useState("");
+  const [selectedKuli, setSelectedKuli] = useState([]); // [{ nik, nama_kuli }] — bisa lebih dari 1
+  const [kuliSearchText, setKuliSearchText] = useState("");
   const [loading, setLoading] = useState(true);
   const [expandedTrip, setExpandedTrip] = useState(null);
 
@@ -199,19 +201,30 @@ export default function MuatFg() {
     setForm((f) => ({ ...f, [name]: value }));
 
   const filteredKuli = useMemo(() => {
-    const q = kuliInputText.toUpperCase();
+    const q = kuliSearchText.toUpperCase();
     if (!q) return kuliList;
     return kuliList.filter(
       (k) =>
         k.nama_kuli?.toUpperCase().includes(q) ||
         k.nik?.toUpperCase().includes(q),
     );
-  }, [kuliList, kuliInputText]);
+  }, [kuliList, kuliSearchText]);
 
+  // Mode edit cuma boleh 1 kuli per baris (karena 1 row = 1 id_kuli di DB).
+  // Mode tambah baru boleh pilih lebih dari 1 kuli sekaligus — nanti dikirim
+  // sebagai beberapa transaksi terpisah (1 request per kuli) saat submit.
   const pickKuli = (k) => {
-    setKuliInputText(`${k.nama_kuli} (${k.nik})`);
-    handleChange("id_kuli", k.nik);
-    setKuliOpen(false);
+    setKuliSearchText("");
+    setSelectedKuli((prev) => {
+      if (editingId) return [k];
+      if (prev.some((p) => p.nik === k.nik)) return prev; // udah dipilih
+      return [...prev, k];
+    });
+    if (editingId) setKuliOpen(false);
+  };
+
+  const removeKuli = (nik) => {
+    setSelectedKuli((prev) => prev.filter((p) => p.nik !== nik));
   };
 
   useEffect(() => {
@@ -226,7 +239,8 @@ export default function MuatFg() {
   const resetForm = () => {
     setForm(emptyForm);
     setOracleDisplay(emptyOracleDisplay);
-    setKuliInputText("");
+    setSelectedKuli([]);
+    setKuliSearchText("");
     setEditingId(null);
   };
 
@@ -249,9 +263,10 @@ export default function MuatFg() {
       ket: row.ket || "Muat",
     });
     const matchKuli = kuliList.find((k) => k.nik === row.id_kuli);
-    setKuliInputText(
-      matchKuli ? `${matchKuli.nama_kuli} (${matchKuli.nik})` : row.id_kuli,
-    );
+    setSelectedKuli([
+      matchKuli || { nik: row.id_kuli, nama_kuli: row.id_kuli },
+    ]);
+    setKuliSearchText("");
     const oracle = oracleByTrip[row.no_trip];
     setOracleDisplay(
       oracle
@@ -272,12 +287,39 @@ export default function MuatFg() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.id_kuli) {
+    if (selectedKuli.length === 0) {
       Swal.fire({ ...swalDark, icon: "warning", title: "Kuli wajib dipilih" });
       return;
     }
+    // SelectNeo (Jenis Truk / Keterangan / Market) bukan <select> native lagi,
+    // jadi validasi "required"-nya dicek manual di sini.
+    if (!form.market) {
+      Swal.fire({
+        ...swalDark,
+        icon: "warning",
+        title: "Market wajib dipilih",
+      });
+      return;
+    }
+    if (!form.jenis_truk) {
+      Swal.fire({
+        ...swalDark,
+        icon: "warning",
+        title: "Jenis Truk wajib dipilih",
+      });
+      return;
+    }
+    if (!form.ket) {
+      Swal.fire({
+        ...swalDark,
+        icon: "warning",
+        title: "Keterangan wajib dipilih",
+      });
+      return;
+    }
+
     setSaving(true);
-    const payload = {
+    const basePayload = {
       tgl: form.tgl,
       market: form.market,
       customer: form.customer,
@@ -291,20 +333,28 @@ export default function MuatFg() {
       driver: "-",
       jam_masuk: "-",
       ket: form.ket,
-      id_kuli: form.id_kuli,
     };
     try {
       if (editingId) {
-        await muatFgApi.update(editingId, payload);
+        await muatFgApi.update(editingId, {
+          ...basePayload,
+          id_kuli: selectedKuli[0].nik,
+        });
       } else {
-        await muatFgApi.create(payload);
+        // Kuli dipilih lebih dari 1 -> bikin 1 baris transaksi per kuli,
+        // dikirim berurutan biar gampang dilacak kalau ada yang gagal.
+        for (const k of selectedKuli) {
+          await muatFgApi.create({ ...basePayload, id_kuli: k.nik });
+        }
       }
       Swal.fire({
         ...swalDark,
         icon: "success",
         title: editingId
           ? "Data berhasil diperbarui!"
-          : "Data berhasil disimpan!",
+          : selectedKuli.length > 1
+            ? `${selectedKuli.length} data berhasil disimpan!`
+            : "Data berhasil disimpan!",
         timer: 1300,
         showConfirmButton: false,
       });
@@ -569,7 +619,7 @@ export default function MuatFg() {
     <div>
       {/* ===== FORM INPUT (samain dengan muat-fg-input.blade.php, versi kecil) ===== */}
       <div
-        className="glass-card panel"
+        className="glass-card panel panel-elevated"
         style={{ marginBottom: 16, padding: 14 }}
       >
         <form className="form-neo form-compact" onSubmit={handleSubmit}>
@@ -628,59 +678,47 @@ export default function MuatFg() {
               <label htmlFor="jenis_truk">
                 Jenis Truk <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <select
+              <SelectNeo
                 id="jenis_truk"
+                name="jenis_truk"
                 value={form.jenis_truk}
-                onChange={(e) => handleChange("jenis_truk", e.target.value)}
+                onChange={handleChange}
+                options={jenisTrukList.map((t) => t.nama_kendaraan)}
+                placeholder="-- Pilih Jenis Truk --"
                 disabled={!!editingId}
                 required
-              >
-                <option value="">-- Pilih Jenis Truk --</option>
-                {jenisTrukList.map((t) => (
-                  <option key={t.nama_kendaraan} value={t.nama_kendaraan}>
-                    {t.nama_kendaraan}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className="field">
               <label htmlFor="ket">
                 Keterangan <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <select
+              <SelectNeo
                 id="ket"
+                name="ket"
                 value={form.ket}
-                onChange={(e) => handleChange("ket", e.target.value)}
+                onChange={handleChange}
+                options={KET_OPTIONS}
                 disabled={!!editingId}
                 required
-              >
-                {KET_OPTIONS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className="field">
               <label htmlFor="market">
                 Market <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <select
+              <SelectNeo
                 id="market"
+                name="market"
                 value={form.market}
-                onChange={(e) => handleChange("market", e.target.value)}
+                onChange={handleChange}
+                options={MARKET_OPTIONS}
+                placeholder="-- Pilih Market --"
                 disabled={!!editingId}
                 required
-              >
-                <option value="">-- Pilih Market --</option>
-                {MARKET_OPTIONS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div
@@ -689,52 +727,87 @@ export default function MuatFg() {
               style={{ position: "relative" }}
             >
               <label htmlFor="id_kuli_input">
-                Kuli <span style={{ color: "var(--danger)" }}>*</span>
+                Kuli {"( bisa pilih lebih dari 1 )"}
+                <span style={{ color: "var(--danger)" }}>*</span>
+                {!editingId && selectedKuli.length > 0 && (
+                  <span
+                    style={{
+                      opacity: 0.55,
+                      fontWeight: 500,
+                      textTransform: "none",
+                    }}
+                  >
+                    {" "}
+                    ({selectedKuli.length} dipilih)
+                  </span>
+                )}
               </label>
-              <input
-                type="text"
-                id="id_kuli_input"
-                placeholder="Pilih atau ketik Kuli..."
-                autoComplete="off"
-                value={kuliInputText}
-                onFocus={() => setKuliOpen(true)}
-                onChange={(e) => {
-                  setKuliInputText(e.target.value.toUpperCase());
-                  setKuliOpen(true);
-                }}
-                required
-              />
+              <div
+                className={`multiselect-neo${kuliOpen ? " open" : ""}`}
+                onClick={() => setKuliOpen(true)}
+              >
+                {selectedKuli.map((k) => (
+                  <span
+                    key={k.nik}
+                    className="chip-neo"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {k.nama_kuli} ({k.nik})
+                    <button
+                      type="button"
+                      onClick={() => removeKuli(k.nik)}
+                      title="Hapus"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  id="id_kuli_input"
+                  placeholder={
+                    selectedKuli.length ? "" : "Pilih atau ketik Kuli..."
+                  }
+                  autoComplete="off"
+                  value={kuliSearchText}
+                  onFocus={() => setKuliOpen(true)}
+                  onChange={(e) => {
+                    setKuliSearchText(e.target.value.toUpperCase());
+                    setKuliOpen(true);
+                  }}
+                  style={{
+                    flex: "1 1 90px",
+                    minWidth: 90,
+                    border: "none",
+                    background: "transparent",
+                    padding: "4px 2px",
+                  }}
+                />
+              </div>
               {kuliOpen && filteredKuli.length > 0 && (
                 <div
+                  className="dropdown-neo"
                   style={{
-                    position: "absolute",
                     top: "calc(100% + 4px)",
                     left: 0,
                     right: 0,
-                    zIndex: 20,
                     maxHeight: 220,
                     overflowY: "auto",
-                    background: "rgba(10,16,32,0.98)",
-                    border: "1px solid var(--glass-border)",
-                    borderRadius: 9,
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
                   }}
                 >
-                  {filteredKuli.map((k) => (
-                    <div
-                      key={k.nik}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => pickKuli(k)}
-                      style={{
-                        padding: "8px 12px",
-                        fontSize: 13,
-                        cursor: "pointer",
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                      }}
-                    >
-                      {k.nama_kuli} ({k.nik})
-                    </div>
-                  ))}
+                  {filteredKuli.map((k) => {
+                    const picked = selectedKuli.some((s) => s.nik === k.nik);
+                    return (
+                      <div
+                        key={k.nik}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => pickKuli(k)}
+                        className={`dropdown-neo-item${picked ? " active" : ""}`}
+                      >
+                        {k.nama_kuli} ({k.nik}){picked && <Check size={13} />}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -850,7 +923,7 @@ export default function MuatFg() {
             </button>
             <button
               type="button"
-              className="btn-neo ghost sm"
+              className="btn-neo success sm"
               onClick={resetForm}
               disabled={saving}
             >

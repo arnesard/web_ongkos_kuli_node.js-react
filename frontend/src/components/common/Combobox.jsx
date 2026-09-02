@@ -71,18 +71,13 @@ export default function Combobox({
 
       {open && filtered.length > 0 && (
         <div
+          className="dropdown-neo"
           style={{
-            position: "absolute",
             top: "calc(100% + 4px)",
             left: 0,
             right: 0,
-            zIndex: 20,
             maxHeight,
             overflowY: "auto",
-            background: "rgba(10, 16, 32, 0.98)",
-            border: "1px solid var(--glass-border)",
-            borderRadius: 9,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
           }}
         >
           {filtered.map((opt) => (
@@ -90,14 +85,7 @@ export default function Combobox({
               key={opt}
               onMouseDown={(e) => e.preventDefault()} // biar nggak nge-blur input duluan
               onClick={() => handleSelect(opt)}
-              style={{
-                padding: "8px 12px",
-                fontSize: 14,
-                cursor: "pointer",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0, 212, 255, 0.08)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              className="dropdown-neo-item"
             >
               {opt}
             </div>

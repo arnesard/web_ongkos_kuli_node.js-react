@@ -717,15 +717,16 @@
 }
 .table-bordered-neo tr.row-summary {
   background: transparent;
+  transition: background-color 0.15s ease;
 }
 .table-bordered-neo tr.row-summary:hover {
-  background: rgba(47, 125, 255, 0.08);
+  background: rgba(62, 57, 35, 0.5);
 }
 .table-bordered-neo tr.row-summary.open {
-  background: rgba(47, 125, 255, 0.14);
+  background: #3e3923;
 }
 .table-bordered-neo tr.row-summary.open:hover {
-  background: rgba(47, 125, 255, 0.2);
+  background: #4a4429;
 }
 
 /* Baris pembungkus tabel detail accordion — dikasih jarak, bukan border nempel */
