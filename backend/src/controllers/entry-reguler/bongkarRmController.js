@@ -1,7 +1,12 @@
 const pool = require("../../config/db");
 const { ok, fail } = require("../../utils/response");
 const { warehouseScope } = require("../../middleware/auth");
-const { buildPrefixedNoTrip, isDateInAllowedRange, isExactDuplicate } = require("./transaksiTrukHelper");
+const {
+  buildPrefixedNoTrip,
+  isDateInAllowedRange,
+  isExactDuplicate,
+  getBonSementaraStatus,
+} = require("./transaksiTrukHelper");
 
 const TABLE = "data_transaksi_tbl";
 
@@ -43,14 +48,26 @@ async function list(req, res) {
 
     const [countRows] = await pool.query(
       `SELECT no_trip, COUNT(DISTINCT id_kuli) AS count_kuli FROM ${TABLE} WHERE warehouse = ? GROUP BY no_trip`,
-      [warehouse]
+      [warehouse],
     );
     const countKuliPerTrip = {};
     countRows.forEach((r) => (countKuliPerTrip[r.no_trip] = r.count_kuli));
 
-    const [jenisBarangRows] = await pool.query("SELECT * FROM data_barang_tbl ORDER BY jenis");
+    const [jenisBarangRows] = await pool.query(
+      "SELECT * FROM data_barang_tbl ORDER BY jenis",
+    );
 
-    return ok(res, { datas, countKuliPerTrip, jenis_barang: jenisBarangRows });
+    // Status Bon Sementara di tanggal yang lagi ditampilkan (tgl filter atau hari ini) —
+    // dipakai buat kunci tombol edit/hapus jadi label APPROVE, samain OngkosController::indexBongkarrm.
+    const tanggalFilter = tgl || new Date().toISOString().slice(0, 10);
+    const status = await getBonSementaraStatus(tanggalFilter);
+
+    return ok(res, {
+      datas,
+      countKuliPerTrip,
+      jenis_barang: jenisBarangRows,
+      status,
+    });
   } catch (err) {
     console.error("[bongkarRm.list]", err);
     return fail(res, "Gagal mengambil data bongkar RM.", 500);
@@ -61,33 +78,83 @@ async function list(req, res) {
 async function create(req, res) {
   const { warehouse } = warehouseScope(req.user);
   const body = req.body;
-  const required = ["tgl", "market", "customer", "kota", "jam_bongkar", "no_trip", "qty_truk", "jenis_truk", "pa", "nopol", "driver", "jam_masuk", "id_kuli"];
+  const required = [
+    "tgl",
+    "market",
+    "customer",
+    "kota",
+    "jam_bongkar",
+    "no_trip",
+    "qty_truk",
+    "jenis_truk",
+    "pa",
+    "nopol",
+    "driver",
+    "jam_masuk",
+    "id_kuli",
+  ];
   for (const f of required) {
-    if (!body[f] && body[f] !== 0) return fail(res, `Field ${f} wajib diisi.`, 422);
+    if (!body[f] && body[f] !== 0)
+      return fail(res, `Field ${f} wajib diisi.`, 422);
   }
 
   if (!isDateInAllowedRange(body.tgl)) {
-    return fail(res, "Tanggal hanya diperbolehkan H-4, H, atau H+4 dari hari ini.", 422);
+    return fail(
+      res,
+      "Tanggal hanya diperbolehkan H-4, H, atau H+4 dari hari ini.",
+      422,
+    );
   }
 
   const no_trip = buildPrefixedNoTrip(body.tgl, body.no_trip);
   const ket = (body.ket || "").trim() || null;
 
   const duplicate = await isExactDuplicate({
-    tgl: body.tgl, market: body.market, customer: body.customer, kota: body.kota,
-    jam_bongkar: body.jam_bongkar, no_trip, qty_truk: body.qty_truk, jenis_truk: body.jenis_truk,
-    pa: body.pa, nopol: body.nopol, driver: body.driver, jam_masuk: body.jam_masuk,
-    ket, id_kuli: body.id_kuli, warehouse,
+    tgl: body.tgl,
+    market: body.market,
+    customer: body.customer,
+    kota: body.kota,
+    jam_bongkar: body.jam_bongkar,
+    no_trip,
+    qty_truk: body.qty_truk,
+    jenis_truk: body.jenis_truk,
+    pa: body.pa,
+    nopol: body.nopol,
+    driver: body.driver,
+    jam_masuk: body.jam_masuk,
+    ket,
+    id_kuli: body.id_kuli,
+    warehouse,
   });
   if (duplicate) {
-    return fail(res, "Data transaksi ini sudah tercatat lengkap. Entri ini adalah duplikat.", 422);
+    return fail(
+      res,
+      "Data transaksi ini sudah tercatat lengkap. Entri ini adalah duplikat.",
+      422,
+    );
   }
 
   try {
     await pool.query(
       `INSERT INTO ${TABLE} (tgl, market, customer, kota, jam_bongkar, no_trip, qty_truk, jenis_truk, pa, nopol, driver, jam_masuk, ket, id_kuli, warehouse)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [body.tgl, body.market, body.customer, body.kota, body.jam_bongkar, no_trip, body.qty_truk, body.jenis_truk, body.pa, body.nopol, body.driver, body.jam_masuk, ket, body.id_kuli, warehouse]
+      [
+        body.tgl,
+        body.market,
+        body.customer,
+        body.kota,
+        body.jam_bongkar,
+        no_trip,
+        body.qty_truk,
+        body.jenis_truk,
+        body.pa,
+        body.nopol,
+        body.driver,
+        body.jam_masuk,
+        ket,
+        body.id_kuli,
+        warehouse,
+      ],
     );
     return ok(res, null, "Data berhasil disimpan!", 201);
   } catch (err) {
@@ -102,7 +169,9 @@ async function update(req, res) {
   const body = req.body;
 
   try {
-    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [
+      id,
+    ]);
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
 
     const no_trip = buildPrefixedNoTrip(body.tgl, body.no_trip);
@@ -110,7 +179,23 @@ async function update(req, res) {
 
     await pool.query(
       `UPDATE ${TABLE} SET tgl=?, market=?, customer=?, kota=?, jam_bongkar=?, no_trip=?, qty_truk=?, jenis_truk=?, pa=?, nopol=?, driver=?, jam_masuk=?, ket=?, id_kuli=? WHERE id=?`,
-      [body.tgl, body.market, body.customer, body.kota, body.jam_bongkar, no_trip, body.qty_truk, body.jenis_truk, body.pa, body.nopol, body.driver, body.jam_masuk, ket, body.id_kuli, id]
+      [
+        body.tgl,
+        body.market,
+        body.customer,
+        body.kota,
+        body.jam_bongkar,
+        no_trip,
+        body.qty_truk,
+        body.jenis_truk,
+        body.pa,
+        body.nopol,
+        body.driver,
+        body.jam_masuk,
+        ket,
+        body.id_kuli,
+        id,
+      ],
     );
     return ok(res, null, "Data berhasil diperbarui!");
   } catch (err) {
@@ -123,7 +208,9 @@ async function update(req, res) {
 async function remove(req, res) {
   const { id } = req.params;
   try {
-    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [
+      id,
+    ]);
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
     await pool.query(`DELETE FROM ${TABLE} WHERE id = ?`, [id]);
     return ok(res, null, "Data berhasil dihapus!");

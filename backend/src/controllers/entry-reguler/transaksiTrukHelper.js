@@ -27,10 +27,41 @@ function isDateInAllowedRange(tglInput) {
 }
 
 // Cek duplikasi transaksi (versi sederhana dari Rule A di StoreOrUpdateMuatFgRequest)
-async function isExactDuplicate({ tgl, market, customer, kota, jam_bongkar, no_trip, qty_truk, jenis_truk, pa, nopol, driver, jam_masuk, ket, id_kuli, warehouse, excludeId }) {
+async function isExactDuplicate({
+  tgl,
+  market,
+  customer,
+  kota,
+  jam_bongkar,
+  no_trip,
+  qty_truk,
+  jenis_truk,
+  pa,
+  nopol,
+  driver,
+  jam_masuk,
+  ket,
+  id_kuli,
+  warehouse,
+  excludeId,
+}) {
   let sql = `SELECT id FROM data_transaksi_tbl WHERE tgl=? AND market=? AND customer=? AND kota=? AND jam_bongkar=?
     AND no_trip=? AND jenis_truk=? AND pa=? AND nopol=? AND driver=? AND jam_masuk=? AND id_kuli=? AND warehouse=?`;
-  const params = [tgl, market, customer, kota, jam_bongkar, no_trip, jenis_truk, pa, nopol, driver, jam_masuk, id_kuli, warehouse];
+  const params = [
+    tgl,
+    market,
+    customer,
+    kota,
+    jam_bongkar,
+    no_trip,
+    jenis_truk,
+    pa,
+    nopol,
+    driver,
+    jam_masuk,
+    id_kuli,
+    warehouse,
+  ];
 
   if (ket && ket !== "-") {
     sql += " AND ket = ?";
@@ -48,4 +79,29 @@ async function isExactDuplicate({ tgl, market, customer, kota, jam_bongkar, no_t
   return rows.length > 0;
 }
 
-module.exports = { formatDmy, buildPrefixedNoTrip, isDateInAllowedRange, isExactDuplicate };
+// Samain dengan cek status Bon Sementara di OngkosController::indexBongkarrm / editBongkarrm:
+//   DataBonSementara::select('status')->whereDate('tgl', $tanggalFilter)->first();
+// Catatan: kolom aslinya di tabel data_bonsementara_tbl adalah `status_bs` (lihat fix
+// yang sama di bonSementaraController.js), BUKAN `status`. Sengaja TIDAK difilter
+// warehouse, sama persis seperti query Laravel aslinya (global per tanggal).
+async function getBonSementaraStatus(tgl) {
+  if (!tgl) return null;
+  try {
+    const [rows] = await pool.query(
+      "SELECT status_bs FROM data_bonsementara_tbl WHERE DATE(tgl) = ? ORDER BY id DESC LIMIT 1",
+      [tgl],
+    );
+    return rows[0]?.status_bs ?? null;
+  } catch (err) {
+    console.error("[transaksiTrukHelper.getBonSementaraStatus]", err);
+    return null;
+  }
+}
+
+module.exports = {
+  formatDmy,
+  buildPrefixedNoTrip,
+  isDateInAllowedRange,
+  isExactDuplicate,
+  getBonSementaraStatus,
+};
