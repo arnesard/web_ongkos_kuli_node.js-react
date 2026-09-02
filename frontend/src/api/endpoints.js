@@ -88,4 +88,6 @@ export const lookupApi = {
   customer: async (params) => (await api.get("/helpers/customer", { params })).data.data,
   kuliList: async () => (await api.get("/helpers/kuli-list")).data.data,
   getLastKode: async (params) => (await api.get("/helpers/get-last-kode", { params })).data.data,
+  // { status: "found", data: {...} } | { status: "not_found" }
+  getTripData: async (params) => (await api.get("/helpers/get-trip-data", { params })).data.data,
 };

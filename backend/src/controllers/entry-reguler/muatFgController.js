@@ -1,9 +1,35 @@
 const pool = require("../../config/db");
+const poolSecond = require("../../config/dbSecond");
 const { ok, fail } = require("../../utils/response");
 const { warehouseScope } = require("../../middleware/auth");
 const { buildPrefixedNoTrip, isDateInAllowedRange, isExactDuplicate } = require("./transaksiTrukHelper");
 
 const TABLE = "data_transaksi_tbl";
+const TABLE_ORACLE = "gt_ora_shipment_trans";
+
+// Ambil data Oracle (volume, weight, tire/tube/flap/rimband/valve/other_qty) buat
+// sekumpulan no_trip sekaligus, di-keyBy no_trip. Samain dengan $dataOracle / $oracleIndexed
+// di muat-fg-tabel.blade.php (Laravel narik SEMUA dataOracle lalu di-keyBy no_trip di PHP;
+// di sini kita filter dulu ke no_trip yang relevan biar lebih ringan).
+async function fetchOracleByTrip(noTripList) {
+  const oracleByTrip = {};
+  const uniqueTrips = [...new Set(noTripList.filter(Boolean))];
+  if (uniqueTrips.length === 0) return oracleByTrip;
+
+  try {
+    const placeholders = uniqueTrips.map(() => "?").join(",");
+    const [rows] = await poolSecond.query(
+      `SELECT * FROM ${TABLE_ORACLE} WHERE no_trip IN (${placeholders})`,
+      uniqueTrips
+    );
+    rows.forEach((r) => (oracleByTrip[r.no_trip] = r));
+  } catch (err) {
+    console.error("[muatFg.fetchOracleByTrip]", err);
+    // Gagal narik data Oracle bukan alasan buat gagalin seluruh listing —
+    // biarin kosong, frontend tampilin '-' (sama seperti Laravel: optional($oracle)).
+  }
+  return oracleByTrip;
+}
 
 // GET /api/entry-reguler/muat-fg?tgl=&customer=&no_trip=
 // Samain dengan OngkosController::createMuatFG (join ke data_kendaraan_tbl -> biaya_truk)
@@ -52,12 +78,18 @@ async function list(req, res) {
     const [kendaraanRows] = await pool.query("SELECT * FROM data_kendaraan_tbl ORDER BY nama_kendaraan");
     const [kotaRows] = await pool.query("SELECT * FROM data_kota_tbl ORDER BY nama_kota");
 
+    // Volume/Weight/Tire/Tube/Flap/Rimband/Valve/Other — sumbernya dari DB kedua
+    // (gt_ora_shipment_trans), bukan dari data_transaksi_tbl. Disamakan dengan
+    // $oracleIndexed di muat-fg-tabel.blade.php.
+    const oracle = await fetchOracleByTrip(datas.map((d) => d.no_trip));
+
     return ok(res, {
       datas,
       countKuliPerTrip,
       customer: customerRows,
       jenis_truk: kendaraanRows,
       data_kota: kotaRows,
+      oracle,
     });
   } catch (err) {
     console.error("[muatFg.list]", err);

@@ -1,6 +1,10 @@
 const pool = require("../../config/db");
+const poolSecond = require("../../config/dbSecond");
 const { ok, fail } = require("../../utils/response");
 const { warehouseScope } = require("../../middleware/auth");
+const { formatDmy } = require("../entry-reguler/transaksiTrukHelper");
+
+const TABLE_ORACLE = "gt_ora_shipment_trans";
 
 // GET /api/helpers/customer?market=&customer=
 async function customer(req, res) {
@@ -98,11 +102,27 @@ async function getLastKode(req, res) {
 }
 
 // GET /api/helpers/get-trip-data?tgl=&no_trip=
-// Catatan: di Laravel data ini berasal dari koneksi database KEDUA (Oracle shipment,
-// model DataTrip::connection('mysql_second')). Endpoint ini disediakan sebagai
-// placeholder — sambungkan ke sumber data trip Anda bila tersedia.
+// Samain dengan OngkosController::getTripData — nyari ke koneksi DB KEDUA
+// (gt_ora_shipment_trans), cocokin no_trip yang sudah di-prefix tanggal (dmy)
+// ATAU no_container yang cocok sama kode mentahnya.
 async function getTripData(req, res) {
-  return ok(res, { status: "not_found" });
+  const { tgl, no_trip } = req.query;
+  if (!tgl || !no_trip) return ok(res, { status: "not_found" });
+
+  const kodeTrip = String(no_trip).toUpperCase().trim();
+  const noTripPrefixed = formatDmy(tgl) + kodeTrip;
+
+  try {
+    const [rows] = await poolSecond.query(
+      `SELECT * FROM ${TABLE_ORACLE} WHERE no_trip = ? OR no_container = ? LIMIT 1`,
+      [noTripPrefixed, kodeTrip]
+    );
+    if (rows.length === 0) return ok(res, { status: "not_found" });
+    return ok(res, { status: "found", data: rows[0] });
+  } catch (err) {
+    console.error("[helpers.getTripData]", err);
+    return fail(res, "Gagal mengambil data trip dari sumber Oracle.", 500);
+  }
 }
 
 module.exports = { customer, kuliList, getLastKode, getTripData };
