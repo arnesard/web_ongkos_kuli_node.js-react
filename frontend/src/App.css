@@ -643,6 +643,171 @@
   padding-left: 38px;
 }
 
+/* ===== Form kompak (Muat Barang FG Warehouse, samain Laravel) ===== */
+.field-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px 10px;
+}
+.field-grid-compact .field-full {
+  grid-column: 1 / -1;
+}
+@media (max-width: 900px) {
+  .field-grid-compact {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .field-grid-compact {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.form-compact .field {
+  margin-bottom: 8px;
+}
+.form-compact label {
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+.form-compact input,
+.form-compact select,
+.form-compact textarea {
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+/* ===== Pencarian satu baris (Daftar Transaksi) ===== */
+.search-inline {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.search-inline .field {
+  flex: 1 1 150px;
+  min-width: 130px;
+  margin-bottom: 0;
+}
+.search-inline .field label {
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+.search-inline input {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.search-inline .btn-neo {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  font-size: 12px;
+}
+
+/* ===== Tabel bergaris (samain muat-fg-tabel.blade.php) ===== */
+.table-bordered-neo {
+  border-collapse: collapse;
+  width: 100%;
+}
+.table-bordered-neo th,
+.table-bordered-neo td {
+  border: 1px solid var(--glass-border);
+}
+.table-bordered-neo thead th {
+  background: rgba(16, 26, 51, 0.75);
+}
+.table-bordered-neo tr.row-summary {
+  background: transparent;
+}
+.table-bordered-neo tr.row-summary:hover {
+  background: rgba(47, 125, 255, 0.08);
+}
+.table-bordered-neo tr.row-summary.open {
+  background: rgba(47, 125, 255, 0.14);
+}
+.table-bordered-neo tr.row-summary.open:hover {
+  background: rgba(47, 125, 255, 0.2);
+}
+
+/* Baris pembungkus tabel detail accordion — dikasih jarak, bukan border nempel */
+.table-bordered-neo tr.row-detail-wrap > td {
+  border: none;
+  background: transparent;
+  padding: 10px 4px;
+}
+
+/* Tabel utama Daftar Transaksi bisa discroll, header ikut nempel di atas */
+.table-scroll-neo {
+  max-height: min(60vh, 480px);
+  overflow: auto;
+  border-radius: 10px;
+}
+.table-scroll-neo .sticky-thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #101a33;
+}
+/* Scrollbar custom biar keliatan jelas di tema gelap */
+.table-scroll-neo::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.table-scroll-neo::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+.table-scroll-neo::-webkit-scrollbar-thumb {
+  background: rgba(47, 125, 255, 0.5);
+  border-radius: 8px;
+}
+.table-scroll-neo::-webkit-scrollbar-thumb:hover {
+  background: rgba(47, 125, 255, 0.75);
+}
+.table-scroll-neo {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(47, 125, 255, 0.5) rgba(255, 255, 255, 0.03);
+}
+
+.table-detail-neo {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+.table-detail-neo thead th {
+  background: #f1f3f6;
+  color: #0a0a0a;
+  opacity: 1;
+  font-weight: 800;
+  text-shadow: none;
+}
+.table-detail-neo tbody td {
+  background: transparent;
+  color: #0a0a0a;
+  font-weight: 600;
+  text-shadow: none;
+}
+.table-detail-neo tbody tr:hover td {
+  background: rgba(0, 0, 0, 0.05);
+}
+.table-detail-neo th,
+.table-detail-neo td {
+  border-color: rgba(0, 0, 0, 0.18);
+}
+.table-detail-neo .icon-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.25);
+  color: #0a0a0a;
+}
+.table-detail-neo .icon-btn:hover {
+  border-color: #2f7dff;
+  color: #2f7dff;
+  box-shadow: none;
+}
+.table-detail-neo .icon-btn.danger:hover {
+  color: #ff5470;
+  border-color: #ff5470;
+  box-shadow: none;
+}
+
 /* ===== Empty state ===== */
 .empty-state {
   text-align: center;

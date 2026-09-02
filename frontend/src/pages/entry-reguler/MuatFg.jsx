@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
-import { Pencil, Trash2, ChevronDown, ChevronUp, Search, RefreshCw, Loader2 } from "lucide-react";
+import * as XLSX from "xlsx-js-style";
+import {
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  RefreshCw,
+  Loader2,
+  FileSpreadsheet,
+} from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import Combobox from "../../components/common/Combobox";
 import { muatFgApi, lookupApi } from "../../api/endpoints";
@@ -25,7 +35,14 @@ const swalDark = {
   cancelButtonColor: "#1e2a45",
 };
 
-const MARKET_OPTIONS = ["-", "Export", "Import", "OEM", "Repl. Dalam Kota", "Repl. Luar Kota"];
+const MARKET_OPTIONS = [
+  "-",
+  "Export",
+  "Import",
+  "OEM",
+  "Repl. Dalam Kota",
+  "Repl. Luar Kota",
+];
 const KET_OPTIONS = ["-", "Muat", "Bongkar", "Muat Kembali"];
 
 const emptyForm = {
@@ -72,7 +89,11 @@ export default function MuatFg() {
   const [expandedTrip, setExpandedTrip] = useState(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchParams, setSearchParams] = useState({ tgl: "", customer: "", no_trip: "" });
+  const [searchParams, setSearchParams] = useState({
+    tgl: "",
+    customer: "",
+    no_trip: "",
+  });
   const [appliedFilters, setAppliedFilters] = useState({});
 
   const kuliBoxRef = useRef(null);
@@ -94,7 +115,9 @@ export default function MuatFg() {
         ...swalDark,
         icon: "error",
         title: "Gagal memuat data",
-        text: err.response?.data?.message || "Terjadi kesalahan saat mengambil data dari server.",
+        text:
+          err.response?.data?.message ||
+          "Terjadi kesalahan saat mengambil data dari server.",
       });
     } finally {
       setLoading(false);
@@ -116,14 +139,18 @@ export default function MuatFg() {
   // ---- Autocomplete customer berdasarkan market ----
   useEffect(() => {
     if (!form.market) return;
-    lookupApi.customer({ market: form.market }).then((d) => setCustomerList(d.last_kode || []));
+    lookupApi
+      .customer({ market: form.market })
+      .then((d) => setCustomerList(d.last_kode || []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.market]);
 
   // ---- Autocomplete kota berdasarkan customer ----
   useEffect(() => {
     if (!form.customer) return;
-    lookupApi.customer({ customer: form.customer }).then((d) => setCityList(d.city || []));
+    lookupApi
+      .customer({ customer: form.customer })
+      .then((d) => setCityList(d.city || []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.customer]);
 
@@ -168,13 +195,16 @@ export default function MuatFg() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.tgl, form.no_trip]);
 
-  const handleChange = (name, value) => setForm((f) => ({ ...f, [name]: value }));
+  const handleChange = (name, value) =>
+    setForm((f) => ({ ...f, [name]: value }));
 
   const filteredKuli = useMemo(() => {
     const q = kuliInputText.toUpperCase();
     if (!q) return kuliList;
     return kuliList.filter(
-      (k) => k.nama_kuli?.toUpperCase().includes(q) || k.nik?.toUpperCase().includes(q)
+      (k) =>
+        k.nama_kuli?.toUpperCase().includes(q) ||
+        k.nik?.toUpperCase().includes(q),
     );
   }, [kuliList, kuliInputText]);
 
@@ -186,7 +216,8 @@ export default function MuatFg() {
 
   useEffect(() => {
     const onClickOutside = (e) => {
-      if (kuliBoxRef.current && !kuliBoxRef.current.contains(e.target)) setKuliOpen(false);
+      if (kuliBoxRef.current && !kuliBoxRef.current.contains(e.target))
+        setKuliOpen(false);
     };
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
@@ -201,7 +232,9 @@ export default function MuatFg() {
 
   const openEdit = (row) => {
     // Samain dengan editMuatFG: no_trip dilepas prefix tanggalnya (6 digit dmy) buat ditampilkan
-    const rawNoTrip = /^\d{6}(.+)/.test(row.no_trip) ? row.no_trip.match(/^\d{6}(.+)/)[1] : row.no_trip;
+    const rawNoTrip = /^\d{6}(.+)/.test(row.no_trip)
+      ? row.no_trip.match(/^\d{6}(.+)/)[1]
+      : row.no_trip;
     setEditingId(row.id);
     setForm({
       tgl: row.tgl,
@@ -216,7 +249,9 @@ export default function MuatFg() {
       ket: row.ket || "Muat",
     });
     const matchKuli = kuliList.find((k) => k.nik === row.id_kuli);
-    setKuliInputText(matchKuli ? `${matchKuli.nama_kuli} (${matchKuli.nik})` : row.id_kuli);
+    setKuliInputText(
+      matchKuli ? `${matchKuli.nama_kuli} (${matchKuli.nik})` : row.id_kuli,
+    );
     const oracle = oracleByTrip[row.no_trip];
     setOracleDisplay(
       oracle
@@ -230,7 +265,7 @@ export default function MuatFg() {
             valve_qty: oracle.valve_qty ?? "",
             other_qty: oracle.other_qty ?? "",
           }
-        : emptyOracleDisplay
+        : emptyOracleDisplay,
     );
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -267,7 +302,9 @@ export default function MuatFg() {
       Swal.fire({
         ...swalDark,
         icon: "success",
-        title: editingId ? "Data berhasil diperbarui!" : "Data berhasil disimpan!",
+        title: editingId
+          ? "Data berhasil diperbarui!"
+          : "Data berhasil disimpan!",
         timer: 1300,
         showConfirmButton: false,
       });
@@ -279,7 +316,9 @@ export default function MuatFg() {
         ...swalDark,
         icon: "error",
         title: "Gagal menyimpan",
-        text: err.response?.data?.message || "Terjadi kesalahan saat menyimpan data.",
+        text:
+          err.response?.data?.message ||
+          "Terjadi kesalahan saat menyimpan data.",
       });
     } finally {
       setSaving(false);
@@ -301,14 +340,22 @@ export default function MuatFg() {
       try {
         await muatFgApi.remove(row.id);
         await fetchList();
-        Swal.fire({ ...swalDark, icon: "success", title: "Data dihapus", timer: 1200, showConfirmButton: false });
+        Swal.fire({
+          ...swalDark,
+          icon: "success",
+          title: "Data dihapus",
+          timer: 1200,
+          showConfirmButton: false,
+        });
       } catch (err) {
         console.error("[MuatFg.handleDelete]", err);
         Swal.fire({
           ...swalDark,
           icon: "error",
           title: "Gagal menghapus",
-          text: err.response?.data?.message || "Terjadi kesalahan saat menghapus data.",
+          text:
+            err.response?.data?.message ||
+            "Terjadi kesalahan saat menghapus data.",
         });
       }
     });
@@ -337,14 +384,196 @@ export default function MuatFg() {
     return [...map.entries()];
   }, [datas]);
 
+  // ---- Export ke Excel (samain data yang tampil di tabel Daftar Transaksi Muat) ----
+  const handleExportExcel = () => {
+    if (grouped.length === 0) {
+      Swal.fire({
+        ...swalDark,
+        icon: "info",
+        title: "Tidak ada data untuk diexport",
+      });
+      return;
+    }
+
+    const headerFill = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "2F7DFF" } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin", color: { rgb: "999999" } },
+        bottom: { style: "thin", color: { rgb: "999999" } },
+        left: { style: "thin", color: { rgb: "999999" } },
+        right: { style: "thin", color: { rgb: "999999" } },
+      },
+    };
+    const cellBorder = {
+      border: {
+        top: { style: "thin", color: { rgb: "CCCCCC" } },
+        bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+        left: { style: "thin", color: { rgb: "CCCCCC" } },
+        right: { style: "thin", color: { rgb: "CCCCCC" } },
+      },
+    };
+
+    // ---- Sheet 1: Ringkasan per No. Trip ----
+    const summaryHeader = [
+      "NO",
+      "Tanggal",
+      "Market",
+      "Customer",
+      "No. Trip",
+      "Qty | Jenis Truk",
+      "Volume",
+      "Weight",
+      "No Polisi",
+      "Gudang",
+      "Nilai (Rp)",
+      "Total Kuli",
+      "Total Muatan",
+    ];
+    const summaryRows = grouped.map(([trip, records], idx) => {
+      const first = records[0];
+      const oracle = oracleByTrip[trip];
+      const jumlahKuli = countKuliPerTrip[trip] ?? records.length;
+      const totalMuatan =
+        (Number(oracle?.tire_qty) || 0) +
+        (Number(oracle?.tube_qty) || 0) +
+        (Number(oracle?.flap_qty) || 0) +
+        (Number(oracle?.rimband_qty) || 0) +
+        (Number(oracle?.valve_qty) || 0) +
+        (Number(oracle?.other_qty) || 0);
+      return [
+        idx + 1,
+        first.tgl,
+        first.market,
+        first.customer,
+        trip,
+        `${first.qty_truk} | ${first.jenis_truk}`,
+        oracle?.volume ?? "-",
+        oracle?.weight ?? "-",
+        first.nopol,
+        first.warehouse ?? "-",
+        Number(first.total_biaya) || 0,
+        jumlahKuli,
+        totalMuatan,
+      ];
+    });
+    const wsSummary = XLSX.utils.aoa_to_sheet([summaryHeader, ...summaryRows]);
+    summaryHeader.forEach((_, c) => {
+      const ref = XLSX.utils.encode_cell({ r: 0, c });
+      if (wsSummary[ref]) wsSummary[ref].s = headerFill;
+    });
+    summaryRows.forEach((row, r) => {
+      row.forEach((v, c) => {
+        const ref = XLSX.utils.encode_cell({ r: r + 1, c });
+        if (wsSummary[ref]) wsSummary[ref].s = cellBorder;
+      });
+    });
+    wsSummary["!cols"] = [
+      { wch: 5 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 8 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 12 },
+    ];
+
+    // ---- Sheet 2: Detail per Kuli ----
+    const detailHeader = [
+      "NO",
+      "Tanggal",
+      "Market",
+      "Customer",
+      "No. Trip",
+      "Qty | Jenis Truk",
+      "No Polisi",
+      "Keterangan",
+      "ID Kuli",
+      "Tire",
+      "Tube",
+      "Flap",
+      "Rimband",
+      "Valve",
+      "Other",
+    ];
+    const detailRows = [];
+    grouped.forEach(([trip, records]) => {
+      const oracle = oracleByTrip[trip];
+      records.forEach((r, i) => {
+        detailRows.push([
+          i + 1,
+          r.tgl,
+          r.market,
+          r.customer,
+          trip,
+          `${r.qty_truk} | ${r.jenis_truk}`,
+          r.nopol,
+          r.ket || "-",
+          r.id_kuli,
+          Number(oracle?.tire_qty) || 0,
+          Number(oracle?.tube_qty) || 0,
+          Number(oracle?.flap_qty) || 0,
+          Number(oracle?.rimband_qty) || 0,
+          Number(oracle?.valve_qty) || 0,
+          Number(oracle?.other_qty) || 0,
+        ]);
+      });
+    });
+    const wsDetail = XLSX.utils.aoa_to_sheet([detailHeader, ...detailRows]);
+    detailHeader.forEach((_, c) => {
+      const ref = XLSX.utils.encode_cell({ r: 0, c });
+      if (wsDetail[ref]) wsDetail[ref].s = headerFill;
+    });
+    detailRows.forEach((row, r) => {
+      row.forEach((v, c) => {
+        const ref = XLSX.utils.encode_cell({ r: r + 1, c });
+        if (wsDetail[ref]) wsDetail[ref].s = cellBorder;
+      });
+    });
+    wsDetail["!cols"] = [
+      { wch: 5 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 7 },
+      { wch: 7 },
+      { wch: 7 },
+      { wch: 9 },
+      { wch: 7 },
+      { wch: 7 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Ringkasan");
+    XLSX.utils.book_append_sheet(wb, wsDetail, "Detail");
+
+    const tglLabel = (
+      appliedFilters.tgl || new Date().toISOString().slice(0, 10)
+    ).replaceAll("-", "");
+    XLSX.writeFile(wb, `Daftar_Transaksi_Muat_${tglLabel}.xlsx`);
+  };
+
   return (
     <div>
-      <PageHeader title="Muat Barang FG Warehouse" subtitle="Entry ongkos reguler — transaksi muat barang jadi (FG)" />
-
-      {/* ===== FORM INPUT (samain dengan muat-fg-input.blade.php) ===== */}
-      <div className="glass-card panel" style={{ marginBottom: 16 }}>
-        <form className="form-neo" onSubmit={handleSubmit}>
-          <div className="field-grid-2">
+      {/* ===== FORM INPUT (samain dengan muat-fg-input.blade.php, versi kecil) ===== */}
+      <div
+        className="glass-card panel"
+        style={{ marginBottom: 16, padding: 14 }}
+      >
+        <form className="form-neo form-compact" onSubmit={handleSubmit}>
+          <div className="field-grid-compact">
             <div className="field">
               <label htmlFor="tgl">
                 Tanggal <span style={{ color: "var(--danger)" }}>*</span>
@@ -359,45 +588,6 @@ export default function MuatFg() {
               />
             </div>
 
-            <div className="field" ref={kuliBoxRef} style={{ position: "relative" }}>
-              <label htmlFor="id_kuli_input">
-                Kuli <span style={{ color: "var(--danger)" }}>*</span>
-              </label>
-              <input
-                type="text"
-                id="id_kuli_input"
-                placeholder="Pilih atau ketik Kuli..."
-                autoComplete="off"
-                value={kuliInputText}
-                onFocus={() => setKuliOpen(true)}
-                onChange={(e) => {
-                  setKuliInputText(e.target.value.toUpperCase());
-                  setKuliOpen(true);
-                }}
-                required
-              />
-              {kuliOpen && filteredKuli.length > 0 && (
-                <div
-                  style={{
-                    position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20,
-                    maxHeight: 220, overflowY: "auto", background: "rgba(10,16,32,0.98)",
-                    border: "1px solid var(--glass-border)", borderRadius: 9, boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  {filteredKuli.map((k) => (
-                    <div
-                      key={k.nik}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => pickKuli(k)}
-                      style={{ padding: "8px 12px", fontSize: 14, cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.05)" }}
-                    >
-                      {k.nama_kuli} ({k.nik})
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <div className="field">
               <label htmlFor="no_trip">
                 No. Trip <span style={{ color: "var(--danger)" }}>*</span>
@@ -409,21 +599,9 @@ export default function MuatFg() {
                 pattern="[A-Za-z]\d{2,3}"
                 title="Format: 1 huruf diikuti 2-3 digit angka, contoh D01 / D200"
                 value={form.no_trip}
-                onChange={(e) => handleChange("no_trip", e.target.value.toUpperCase())}
-                readOnly={!!editingId}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="nopol">
-                No. Polisi <span style={{ color: "var(--danger)" }}>*</span>
-              </label>
-              <input
-                type="text"
-                id="nopol"
-                value={form.nopol}
-                onChange={(e) => handleChange("nopol", e.target.value.toUpperCase())}
+                onChange={(e) =>
+                  handleChange("no_trip", e.target.value.toUpperCase())
+                }
                 readOnly={!!editingId}
                 required
               />
@@ -442,21 +620,6 @@ export default function MuatFg() {
                 value={form.qty_truk}
                 onChange={(e) => handleChange("qty_truk", e.target.value)}
                 readOnly={!!editingId}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="customer">
-                Customer <span style={{ color: "var(--danger)" }}>*</span>
-              </label>
-              <Combobox
-                id="customer"
-                name="customer"
-                value={form.customer}
-                onChange={handleChange}
-                options={customerList}
-                placeholder="Pilih atau ketik Customer..."
                 required
               />
             </div>
@@ -482,18 +645,22 @@ export default function MuatFg() {
             </div>
 
             <div className="field">
-              <label htmlFor="kota">
-                Kota <span style={{ color: "var(--danger)" }}>*</span>
+              <label htmlFor="ket">
+                Keterangan <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <Combobox
-                id="kota"
-                name="kota"
-                value={form.kota}
-                onChange={handleChange}
-                options={cityList}
-                placeholder="Pilih atau ketik Kota..."
+              <select
+                id="ket"
+                value={form.ket}
+                onChange={(e) => handleChange("ket", e.target.value)}
+                disabled={!!editingId}
                 required
-              />
+              >
+                {KET_OPTIONS.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="field">
@@ -516,23 +683,106 @@ export default function MuatFg() {
               </select>
             </div>
 
-            <div className="field">
-              <label htmlFor="ket">
-                Keterangan <span style={{ color: "var(--danger)" }}>*</span>
+            <div
+              className="field"
+              ref={kuliBoxRef}
+              style={{ position: "relative" }}
+            >
+              <label htmlFor="id_kuli_input">
+                Kuli <span style={{ color: "var(--danger)" }}>*</span>
               </label>
-              <select
-                id="ket"
-                value={form.ket}
-                onChange={(e) => handleChange("ket", e.target.value)}
-                disabled={!!editingId}
+              <input
+                type="text"
+                id="id_kuli_input"
+                placeholder="Pilih atau ketik Kuli..."
+                autoComplete="off"
+                value={kuliInputText}
+                onFocus={() => setKuliOpen(true)}
+                onChange={(e) => {
+                  setKuliInputText(e.target.value.toUpperCase());
+                  setKuliOpen(true);
+                }}
                 required
-              >
-                {KET_OPTIONS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
+              />
+              {kuliOpen && filteredKuli.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 4px)",
+                    left: 0,
+                    right: 0,
+                    zIndex: 20,
+                    maxHeight: 220,
+                    overflowY: "auto",
+                    background: "rgba(10,16,32,0.98)",
+                    border: "1px solid var(--glass-border)",
+                    borderRadius: 9,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  {filteredKuli.map((k) => (
+                    <div
+                      key={k.nik}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickKuli(k)}
+                      style={{
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      {k.nama_kuli} ({k.nik})
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="field">
+              <label htmlFor="nopol">
+                No. Polisi <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                type="text"
+                id="nopol"
+                value={form.nopol}
+                onChange={(e) =>
+                  handleChange("nopol", e.target.value.toUpperCase())
+                }
+                readOnly={!!editingId}
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="customer">
+                Customer <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <Combobox
+                id="customer"
+                name="customer"
+                value={form.customer}
+                onChange={handleChange}
+                options={customerList}
+                placeholder="Pilih atau ketik Customer..."
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="kota">
+                Kota <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <Combobox
+                id="kota"
+                name="kota"
+                value={form.kota}
+                onChange={handleChange}
+                options={cityList}
+                placeholder="Pilih atau ketik Kota..."
+                required
+              />
             </div>
 
             {/* ---- Field readonly hasil lookup Oracle (bukan disimpan ke DB) ---- */}
@@ -582,15 +832,39 @@ export default function MuatFg() {
             )}
           </div>
 
-          <div className="modal-footer" style={{ justifyContent: "flex-start", gap: 10, marginTop: 6 }}>
-            <button type="submit" className="btn-neo primary" disabled={saving}>
+          <div
+            className="modal-footer"
+            style={{
+              justifyContent: "flex-start",
+              gap: 8,
+              marginTop: 4,
+              paddingTop: 10,
+            }}
+          >
+            <button
+              type="submit"
+              className="btn-neo primary sm"
+              disabled={saving}
+            >
               {saving ? "Menyimpan..." : editingId ? "Update" : "Tambah"}
             </button>
-            <button type="button" className="btn-neo ghost" onClick={resetForm} disabled={saving}>
+            <button
+              type="button"
+              className="btn-neo ghost sm"
+              onClick={resetForm}
+              disabled={saving}
+            >
               Reset
             </button>
           </div>
-          <small style={{ display: "block", marginTop: 8, opacity: 0.6 }}>
+          <small
+            style={{
+              display: "block",
+              marginTop: 6,
+              opacity: 0.6,
+              fontSize: 11,
+            }}
+          >
             <b>Note:</b> Tolong Isi Data Dengan Benar
           </small>
         </form>
@@ -598,26 +872,54 @@ export default function MuatFg() {
 
       {/* ===== DAFTAR TRANSAKSI MUAT (samain dengan muat-fg-tabel.blade.php) ===== */}
       <div className="glass-card panel">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>Daftar Transaksi Muat</h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 12,
+          }}
+        >
+          <h5 style={{ margin: 0 }}>Daftar Transaksi Muat</h5>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="icon-btn" title="Cari" onClick={() => setSearchOpen((s) => !s)}>
+            <button
+              className="icon-btn"
+              title="Export Excel"
+              onClick={handleExportExcel}
+            >
+              <FileSpreadsheet size={16} />
+            </button>
+            <button
+              className="icon-btn"
+              title="Cari"
+              onClick={() => setSearchOpen((s) => !s)}
+            >
               <Search size={16} />
             </button>
-            <button className="icon-btn" title="Refresh (hari ini)" onClick={handleRefreshToday}>
+            <button
+              className="icon-btn"
+              title="Refresh (hari ini)"
+              onClick={handleRefreshToday}
+            >
               <RefreshCw size={16} />
             </button>
           </div>
         </div>
 
         {searchOpen && (
-          <form className="form-neo field-grid-2" onSubmit={handleSearch} style={{ marginBottom: 14 }}>
+          <form
+            className="form-neo search-inline"
+            onSubmit={handleSearch}
+            style={{ marginBottom: 14 }}
+          >
             <div className="field">
               <label>Tanggal</label>
               <input
                 type="date"
                 value={searchParams.tgl}
-                onChange={(e) => setSearchParams((s) => ({ ...s, tgl: e.target.value }))}
+                onChange={(e) =>
+                  setSearchParams((s) => ({ ...s, tgl: e.target.value }))
+                }
               />
             </div>
             <div className="field">
@@ -626,7 +928,9 @@ export default function MuatFg() {
                 type="text"
                 placeholder="Nama Customer"
                 value={searchParams.customer}
-                onChange={(e) => setSearchParams((s) => ({ ...s, customer: e.target.value }))}
+                onChange={(e) =>
+                  setSearchParams((s) => ({ ...s, customer: e.target.value }))
+                }
               />
             </div>
             <div className="field">
@@ -635,28 +939,36 @@ export default function MuatFg() {
                 type="text"
                 placeholder="No Trip"
                 value={searchParams.no_trip}
-                onChange={(e) => setSearchParams((s) => ({ ...s, no_trip: e.target.value }))}
+                onChange={(e) =>
+                  setSearchParams((s) => ({ ...s, no_trip: e.target.value }))
+                }
               />
             </div>
-            <div className="field" style={{ alignSelf: "end" }}>
-              <button type="submit" className="btn-neo primary">
-                Cari
-              </button>
-            </div>
+            <button type="submit" className="btn-neo primary">
+              Cari
+            </button>
           </form>
         )}
 
         {loading ? (
-          <div className="empty-state" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <div
+            className="empty-state"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
             <Loader2 size={16} className="spin" /> Memuat data...
           </div>
         ) : grouped.length === 0 ? (
           <div className="empty-state">Belum ada data.</div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ textAlign: "center", opacity: 0.7 }}>
+          <div className="table-scroll-neo" style={{ overflow: "auto" }}>
+            <table className="table-bordered-neo" style={{ fontSize: 12.5 }}>
+              <thead className="sticky-thead">
+                <tr style={{ textAlign: "center", opacity: 0.85 }}>
                   <th style={{ padding: "8px 6px" }}>NO</th>
                   <th style={{ padding: "8px 6px" }}>Tanggal</th>
                   <th style={{ padding: "8px 6px" }}>Market</th>
@@ -666,6 +978,7 @@ export default function MuatFg() {
                   <th style={{ padding: "8px 6px" }}>Volume</th>
                   <th style={{ padding: "8px 6px" }}>Weight</th>
                   <th style={{ padding: "8px 6px" }}>No Polisi</th>
+                  <th style={{ padding: "8px 6px" }}>Gudang</th>
                   <th style={{ padding: "8px 6px" }}>Nilai (Rp)</th>
                   <th style={{ padding: "8px 6px" }}>Total Kuli</th>
                   <th style={{ padding: "8px 6px" }}>Total Muatan</th>
@@ -713,15 +1026,29 @@ export default function MuatFg() {
 
 // Baris ringkasan per No. Trip + baris detail (bisa di-expand/collapse) per Kuli,
 // sama seperti struktur accordion di muat-fg-tabel.blade.php.
-function FragmentRow({ idx, trip, first, oracle, jumlahKuli, totalMuatan, isOpen, onToggle, records, onEdit, onDelete }) {
+function FragmentRow({
+  idx,
+  trip,
+  first,
+  oracle,
+  jumlahKuli,
+  totalMuatan,
+  isOpen,
+  onToggle,
+  records,
+  onEdit,
+  onDelete,
+}) {
   return (
     <>
       <tr
         onClick={onToggle}
-        style={{ textAlign: "center", cursor: "pointer", background: isOpen ? "rgba(47,125,255,0.08)" : "transparent" }}
+        className={`row-summary${isOpen ? " open" : ""}`}
+        style={{ textAlign: "center", cursor: "pointer" }}
       >
         <td style={{ padding: "8px 6px" }}>
-          {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {idx + 1}
+          {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}{" "}
+          {idx + 1}
         </td>
         <td style={{ padding: "8px 6px" }}>{first.tgl}</td>
         <td style={{ padding: "8px 6px" }}>{first.market}</td>
@@ -733,57 +1060,98 @@ function FragmentRow({ idx, trip, first, oracle, jumlahKuli, totalMuatan, isOpen
         <td style={{ padding: "8px 6px" }}>{oracle?.volume ?? "-"}</td>
         <td style={{ padding: "8px 6px" }}>{oracle?.weight ?? "-"}</td>
         <td style={{ padding: "8px 6px" }}>{first.nopol}</td>
+        <td style={{ padding: "8px 6px" }}>{first.warehouse ?? "-"}</td>
         <td style={{ padding: "8px 6px" }}>{rupiah(first.total_biaya)}</td>
         <td style={{ padding: "8px 6px" }}>{jumlahKuli}</td>
-        <td style={{ padding: "8px 6px" }}>{totalMuatan.toLocaleString("id-ID")}</td>
+        <td style={{ padding: "8px 6px" }}>
+          {totalMuatan.toLocaleString("id-ID")}
+        </td>
       </tr>
 
       {isOpen && (
-        <tr>
-          <td colSpan={12} style={{ padding: 0 }}>
-            <div style={{ padding: 12, borderTop: "1px solid var(--glass-border)" }}>
-              <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ textAlign: "center", opacity: 0.7 }}>
-                    <th style={{ padding: "6px 4px" }}>NO</th>
-                    <th style={{ padding: "6px 4px" }}>Keterangan</th>
-                    <th style={{ padding: "6px 4px" }}>ID Kuli</th>
-                    <th style={{ padding: "6px 4px" }}>Tire</th>
-                    <th style={{ padding: "6px 4px" }}>Tube</th>
-                    <th style={{ padding: "6px 4px" }}>Flap</th>
-                    <th style={{ padding: "6px 4px" }}>Rimband</th>
-                    <th style={{ padding: "6px 4px" }}>Valve</th>
-                    <th style={{ padding: "6px 4px" }}>Other</th>
-                    <th style={{ padding: "6px 4px" }}>ACTION</th>
+        <tr className="row-detail-wrap">
+          <td colSpan={13} style={{ padding: "10px 6px" }}>
+            <table
+              className="table-bordered-neo table-detail-neo"
+              style={{ fontSize: 12 }}
+            >
+              <thead>
+                <tr style={{ textAlign: "center", opacity: 0.85 }}>
+                  <th style={{ padding: "6px 4px" }}>NO</th>
+                  <th style={{ padding: "6px 4px" }}>Tanggal</th>
+                  <th style={{ padding: "6px 4px" }}>Market</th>
+                  <th style={{ padding: "6px 4px" }}>Customer</th>
+                  <th style={{ padding: "6px 4px" }}>No. Trip</th>
+                  <th style={{ padding: "6px 4px" }}>Qty | Jenis Truk</th>
+                  <th style={{ padding: "6px 4px" }}>No Polisi</th>
+                  <th style={{ padding: "6px 4px" }}>Keterangan</th>
+                  <th style={{ padding: "6px 4px" }}>ID Kuli</th>
+                  <th style={{ padding: "6px 4px" }}>Tire</th>
+                  <th style={{ padding: "6px 4px" }}>Tube</th>
+                  <th style={{ padding: "6px 4px" }}>Flap</th>
+                  <th style={{ padding: "6px 4px" }}>Rimband</th>
+                  <th style={{ padding: "6px 4px" }}>Valve</th>
+                  <th style={{ padding: "6px 4px" }}>Other</th>
+                  <th style={{ padding: "6px 4px" }}>ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="detail-body">
+                {records.map((r, i) => (
+                  <tr key={r.id} style={{ textAlign: "center" }}>
+                    <td style={{ padding: "6px 4px" }}>{i + 1}</td>
+                    <td style={{ padding: "6px 4px" }}>{r.tgl}</td>
+                    <td style={{ padding: "6px 4px" }}>{r.market}</td>
+                    <td style={{ padding: "6px 4px" }}>{r.customer}</td>
+                    <td style={{ padding: "6px 4px" }}>{trip}</td>
+                    <td style={{ padding: "6px 4px" }}>
+                      {r.qty_truk} | {r.jenis_truk}
+                    </td>
+                    <td style={{ padding: "6px 4px" }}>{r.nopol}</td>
+                    <td style={{ padding: "6px 4px" }}>{r.ket || "-"}</td>
+                    <td style={{ padding: "6px 4px" }}>{r.id_kuli}</td>
+                    <td style={{ padding: "6px 4px" }}>
+                      {oracle?.tire_qty ?? "-"}
+                    </td>
+                    <td style={{ padding: "6px 4px" }}>
+                      {oracle?.tube_qty ?? "-"}
+                    </td>
+                    <td style={{ padding: "6px 4px" }}>
+                      {oracle?.flap_qty ?? "-"}
+                    </td>
+                    <td style={{ padding: "6px 4px" }}>
+                      {oracle?.rimband_qty ?? "-"}
+                    </td>
+                    <td style={{ padding: "6px 4px" }}>
+                      {oracle?.valve_qty ?? "-"}
+                    </td>
+                    <td style={{ padding: "6px 4px" }}>
+                      {oracle?.other_qty ?? "-"}
+                    </td>
+                    <td style={{ padding: "6px 4px" }}>
+                      <div
+                        className="row-actions"
+                        style={{ justifyContent: "center" }}
+                      >
+                        <button
+                          className="icon-btn"
+                          title="Edit"
+                          onClick={() => onEdit(r)}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          className="icon-btn danger"
+                          title="Hapus"
+                          onClick={() => onDelete(r)}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {records.map((r, i) => (
-                    <tr key={r.id} style={{ textAlign: "center" }}>
-                      <td style={{ padding: "6px 4px" }}>{i + 1}</td>
-                      <td style={{ padding: "6px 4px" }}>{r.ket || "-"}</td>
-                      <td style={{ padding: "6px 4px" }}>{r.id_kuli}</td>
-                      <td style={{ padding: "6px 4px" }}>{oracle?.tire_qty ?? "-"}</td>
-                      <td style={{ padding: "6px 4px" }}>{oracle?.tube_qty ?? "-"}</td>
-                      <td style={{ padding: "6px 4px" }}>{oracle?.flap_qty ?? "-"}</td>
-                      <td style={{ padding: "6px 4px" }}>{oracle?.rimband_qty ?? "-"}</td>
-                      <td style={{ padding: "6px 4px" }}>{oracle?.valve_qty ?? "-"}</td>
-                      <td style={{ padding: "6px 4px" }}>{oracle?.other_qty ?? "-"}</td>
-                      <td style={{ padding: "6px 4px" }}>
-                        <div className="row-actions" style={{ justifyContent: "center" }}>
-                          <button className="icon-btn" title="Edit" onClick={() => onEdit(r)}>
-                            <Pencil size={13} />
-                          </button>
-                          <button className="icon-btn danger" title="Hapus" onClick={() => onDelete(r)}>
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </td>
         </tr>
       )}
