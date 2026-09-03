@@ -18,6 +18,8 @@ import BongkarLuar from "./pages/entry-nonreguler/BongkarLuar";
 import ApproveBongkarmuat from "./pages/management/ApproveBongkarmuat";
 import PerformanceKuli from "./pages/management/PerformanceKuli";
 import BalanceCash from "./pages/management/BalanceCash";
+import CetakBS from "./pages/management/CetakBS";
+import CetakLPBS from "./pages/management/CetakLPBS";
 
 import DaftarKuli from "./pages/master/DaftarKuli";
 import HargaUm from "./pages/master/HargaUm";
@@ -62,6 +64,8 @@ function App() {
             <Route path="/approve-bongkarmuat" element={<ApproveBongkarmuat />} />
             <Route path="/performance-kuli" element={<PerformanceKuli />} />
             <Route path="/balance-cash" element={<BalanceCash />} />
+            <Route path="/transaksi-bs/:no_doc_b64" element={<CetakBS />} />
+            <Route path="/transaksi-lpbs/:no_doc_b64" element={<CetakLPBS />} />
 
             {/* Master Data */}
             <Route path="/daftar-kuli" element={<DaftarKuli />} />

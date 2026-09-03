@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
-import { Check, X, Loader2, ClipboardList } from "lucide-react";
+import { Check, X, Loader2, ClipboardList, Printer } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import SelectNeo from "../../components/common/SelectNeo";
 import { managementApi } from "../../api/endpoints";
 import { useAuth } from "../../context/AuthContext";
+import { encodeNoDoc } from "../../utils/noDoc";
 
 // ==========================================================================
 // Disamakan dengan resources/views/management/approve-bongkarmuat.blade.php
@@ -225,7 +227,18 @@ export default function ApproveBongkarmuat() {
                         <td style={{ textAlign: "center" }}>{idx + 1}</td>
                         <td style={{ textAlign: "center" }}>{row.warehouse}</td>
                         <td style={{ textAlign: "center" }}>{formatTgl(row.tgl)}</td>
-                        <td style={{ fontWeight: 600 }}>{row.no_doc}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          {row.no_doc}{" "}
+                          <Link
+                            to={`/${tab === "lpbs" ? "transaksi-lpbs" : "transaksi-bs"}/${encodeNoDoc(row.no_doc)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Preview / Cetak"
+                            style={{ marginLeft: 4, display: "inline-flex", verticalAlign: "middle" }}
+                          >
+                            <Printer size={13} />
+                          </Link>
+                        </td>
                         <td style={{ whiteSpace: "pre-line" }}>{row.uraian_kegiatan || "-"}</td>
                         <td style={{ textAlign: "right" }}>Rp {Number(nilaiTampil || 0).toLocaleString("id-ID")}</td>
                         <td style={{ textAlign: "center" }}>

@@ -78,6 +78,9 @@ export const managementApi = {
     (await api.post(`/management/approve-bongkarmuat/${noDoc}`, { action, kategori })).data,
   performanceKuli: async (params) => (await api.get("/management/performance-kuli", { params })).data.data,
   balanceCash: async (params) => (await api.get("/management/balance-cash", { params })).data.data,
+  // no_doc_b64 sudah di-encode (base64 lalu encodeURIComponent) sebelum dikirim ke sini
+  bsReport: async (noDocB64) => (await api.get(`/management/transaksi-bs/${noDocB64}`)).data.data,
+  lpbsReport: async (noDocB64) => (await api.get(`/management/transaksi-lpbs/${noDocB64}`)).data.data,
 };
 
 // ==== Dashboard ====

@@ -124,7 +124,19 @@ async function computeLpbsBreakdown(tgl, warehouse) {
   const total_nilai = nilai1 + nilai2 + nilai3 + nilai4;
   const uraian_kegiatan = [uraian1, uraian2, uraian3, uraian4].filter(Boolean).join("\n");
 
-  return { uraian_kegiatan, nilai1, nilai2, nilai3, nilai4, total_nilai, pembulatan: roundToHundred(total_nilai) };
+  return {
+    uraian_kegiatan,
+    uraian1,
+    uraian2,
+    uraian3,
+    uraian4,
+    nilai1,
+    nilai2,
+    nilai3,
+    nilai4,
+    total_nilai,
+    pembulatan: roundToHundred(total_nilai),
+  };
 }
 
 // Badge angka pending di tombol tab BS/LPBS — samain dgn View::composer di
@@ -334,4 +346,4 @@ async function process(req, res) {
   }
 }
 
-module.exports = { list, process };
+module.exports = { list, process, computeLpbsBreakdown, roundToHundred };
