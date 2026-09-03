@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Topbar from "../components/layout/Topbar";
 import { navConfig } from "../config/navConfig";
+import { useAuth } from "../context/AuthContext";
+import { managementApi } from "../api/endpoints";
 
 const SIDEBAR_KEY = "loli_sidebar_open";
+
+// Notif merah "titik" di menu Management/Approve Bongkarmuat cuma buat level
+// yang emang berjenjang approve-nya: SH -> DH -> HOD. Admin/superuser gak
+// pernah approve/reject (lihat approveController.process: 403 buat admin),
+// jadi gak perlu notif juga.
+const LEVELS_WITH_NOTIF = ["sh", "dh", "hod"];
 
 function findPageMeta(pathname) {
   for (const item of navConfig) {
@@ -29,16 +37,45 @@ export default function MainLayout() {
   });
   const location = useLocation();
   const meta = findPageMeta(location.pathname);
+  const { user } = useAuth();
 
-  // TODO (fase backend): ambil dari API notifikasi approval pending
-  const pendingCount = 3;
+  const [pendingCount, setPendingCount] = useState(0);
+  const canSeeNotif = LEVELS_WITH_NOTIF.includes(
+    String(user?.level || "").toLowerCase(),
+  );
+
+  const refreshPendingCount = useCallback(async () => {
+    if (!canSeeNotif) {
+      setPendingCount(0);
+      return;
+    }
+    try {
+      // tab dikosongin -> backend cuma balikin pendingCounts (query ringan,
+      // gak ikut hitung breakdown LPBS), sama query yg dipake badge BS/LPBS
+      // di halaman Approve Bongkarmuat sendiri.
+      const data = await managementApi.approveList({});
+      const counts = data?.pendingCounts || { bs: 0, lpbs: 0 };
+      setPendingCount(Number(counts.bs || 0) + Number(counts.lpbs || 0));
+    } catch (err) {
+      console.error("[MainLayout.refreshPendingCount]", err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSeeNotif]);
+
+  // Refresh pas pertama buka & tiap kali balik dari halaman approve (abis
+  // approve/reject, count di sidebar ikut update), bukan cuma sekali di awal.
+  useEffect(() => {
+    refreshPendingCount();
+  }, [refreshPendingCount, location.pathname]);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_KEY, sidebarOpen ? "1" : "0");
   }, [sidebarOpen]);
 
   return (
-    <div className={`app-shell${sidebarOpen ? "" : " sidebar-collapsed-shell"}`}>
+    <div
+      className={`app-shell${sidebarOpen ? "" : " sidebar-collapsed-shell"}`}
+    >
       <Sidebar
         open={sidebarOpen}
         onExpand={() => setSidebarOpen(true)}

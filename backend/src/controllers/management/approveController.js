@@ -34,25 +34,40 @@ function addDays(dateStr, n) {
   return d.toISOString().slice(0, 10);
 }
 
+// Bulatkan qty ke 2 desimal & buang noise floating-point JS (mis. 0.1+0.2 jadi
+// 0.30000000000000004). Laravel/PHP gak kena masalah ini krn biasa pakai
+// bcmath/number_format pas nampilin, sedangkan penjumlahan float polos di JS
+// nyisain sisa desimal panjang kalau qty truk-nya pecahan (5.1 + 23.39, dst).
+// Ini CUMA buat tampilan teks uraian — total_nilai/nilai1 tetep dihitung dari
+// qty presisi penuh biar Rupiah-nya akurat.
+function formatQty(n) {
+  return Number(n.toFixed(2)).toString();
+}
+
 // Hitung breakdown nilai LPBS on-the-fly dari transaksi asli hari itu (dan H+1,
 // H+2 kalau tgl jatuh hari Jumat — kompensasi weekend, sama kayak balanceCash).
 async function computeLpbsBreakdown(tgl, warehouse) {
   const dayOfWeek = new Date(tgl).getDay(); // JS: Minggu=0 ... Jumat=5 (sama posisinya dgn PHP date('N')==5)
-  const rangeTgl = dayOfWeek === 5 ? [tgl, addDays(tgl, 1), addDays(tgl, 2)] : [tgl];
+  const rangeTgl =
+    dayOfWeek === 5 ? [tgl, addDays(tgl, 1), addDays(tgl, 2)] : [tgl];
   const placeholders = rangeTgl.map(() => "?").join(",");
   const isJMW = String(warehouse).toLowerCase() === "jmw";
 
-  const [kendaraanRows] = await pool.query("SELECT nama_kendaraan, biaya_truk FROM data_kendaraan_tbl");
+  const [kendaraanRows] = await pool.query(
+    "SELECT nama_kendaraan, biaya_truk FROM data_kendaraan_tbl",
+  );
   const biayaTrukArr = {};
   kendaraanRows.forEach((k) => (biayaTrukArr[k.nama_kendaraan] = k.biaya_truk));
-  const [barangRows] = await pool.query("SELECT jenis, ongkos FROM data_barang_tbl");
+  const [barangRows] = await pool.query(
+    "SELECT jenis, ongkos FROM data_barang_tbl",
+  );
   const biayaTrukArrJMW = {};
   barangRows.forEach((b) => (biayaTrukArrJMW[b.jenis] = b.ongkos));
 
   // 1. Ongkos Bongkar/Muat (unik per tgl+no_trip+jenis_truk)
   const [transaksiTruk] = await pool.query(
     `SELECT tgl, no_trip, jenis_truk, qty_truk FROM data_transaksi_tbl WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-    [...rangeTgl, warehouse]
+    [...rangeTgl, warehouse],
   );
   const qtyPerTruk = {};
   const seenGroup = new Set();
@@ -66,31 +81,37 @@ async function computeLpbsBreakdown(tgl, warehouse) {
   let nilai1 = 0;
   const trukString = [];
   Object.entries(qtyPerTruk).forEach(([jenisTruk, qty]) => {
-    const biaya = isJMW ? biayaTrukArrJMW[jenisTruk] || 0 : biayaTrukArr[jenisTruk] || 0;
+    const biaya = isJMW
+      ? biayaTrukArrJMW[jenisTruk] || 0
+      : biayaTrukArr[jenisTruk] || 0;
     if (qty > 0 && biaya > 0) {
       nilai1 += qty * biaya;
-      trukString.push(`${qty} ${jenisTruk}`);
+      trukString.push(`${formatQty(qty)} ${jenisTruk}`);
     }
   });
-  const uraian1 = trukString.length ? `ONGKOS BONGKAR/MUAT : ${trukString.join(", ")}` : null;
+  const uraian1 = trukString.length
+    ? `ONGKOS BONGKAR/MUAT : ${trukString.join(", ")}`
+    : null;
 
   // 2. Uang Makan Kuli
-  const [umRow] = await pool.query("SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ?", [
-    new Date().getFullYear(),
-  ]);
+  const [umRow] = await pool.query(
+    "SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ?",
+    [new Date().getFullYear()],
+  );
   const hargaUM = umRow[0]?.harga_uang_makan || 0;
   const [kuliCountRow] = await pool.query(
     `SELECT COUNT(DISTINCT id_kuli) AS cnt FROM data_transaksi_uangmakankuli_tbl WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-    [...rangeTgl, warehouse]
+    [...rangeTgl, warehouse],
   );
   const kuliCount = kuliCountRow[0]?.cnt || 0;
   const nilai2 = kuliCount * hargaUM;
-  const uraian2 = kuliCount > 0 ? `ONGKOS UANG MAKAN KULI : ${kuliCount} KULI` : null;
+  const uraian2 =
+    kuliCount > 0 ? `ONGKOS UANG MAKAN KULI : ${kuliCount} KULI` : null;
 
   // 3. Susun Lantai (unik per kode_transaksi+tgl)
   const [susunRows] = await pool.query(
     `SELECT jenis_truk, kubikasi, kode_transaksi, tgl FROM data_transaksi_susunlantai_tbl WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-    [...rangeTgl, warehouse]
+    [...rangeTgl, warehouse],
   );
   const susunGrouped = {};
   susunRows.forEach((r) => {
@@ -101,15 +122,18 @@ async function computeLpbsBreakdown(tgl, warehouse) {
   Object.values(susunGrouped).forEach((items) => {
     const first = items[0];
     const biayaPerTruk = biayaTrukArr[first.jenis_truk] || 0;
-    if (first.kubikasi > 0 && biayaPerTruk > 0) nilai3 += first.kubikasi * biayaPerTruk;
+    if (first.kubikasi > 0 && biayaPerTruk > 0)
+      nilai3 += first.kubikasi * biayaPerTruk;
   });
-  const jumlahKegiatanSusun = new Set(susunRows.map((r) => r.kode_transaksi)).size;
-  const uraian3 = nilai3 > 0 ? `ONGKOS SUSUN LANTAI : ${jumlahKegiatanSusun} KEGIATAN` : null;
+  const jumlahKegiatanSusun = new Set(susunRows.map((r) => r.kode_transaksi))
+    .size;
+  const uraian3 =
+    nilai3 > 0 ? `ONGKOS SUSUN LANTAI : ${jumlahKegiatanSusun} KEGIATAN` : null;
 
   // 4. Pemindahan Barang
   const [pemindahanRows] = await pool.query(
     `SELECT biaya_retribusi, biaya_security, biaya_parkir, biaya_uangjalan FROM data_transaksi_pemindahanbarang_tbl WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-    [...rangeTgl, warehouse]
+    [...rangeTgl, warehouse],
   );
   let nilai4 = 0;
   pemindahanRows.forEach((p) => {
@@ -119,10 +143,15 @@ async function computeLpbsBreakdown(tgl, warehouse) {
       Number(p.biaya_parkir || 0) +
       Number(p.biaya_uangjalan || 0);
   });
-  const uraian4 = pemindahanRows.length > 0 ? `ONGKOS PEMINDAHAN BARANG : ${pemindahanRows.length} RITASE` : null;
+  const uraian4 =
+    pemindahanRows.length > 0
+      ? `ONGKOS PEMINDAHAN BARANG : ${pemindahanRows.length} RITASE`
+      : null;
 
   const total_nilai = nilai1 + nilai2 + nilai3 + nilai4;
-  const uraian_kegiatan = [uraian1, uraian2, uraian3, uraian4].filter(Boolean).join("\n");
+  const uraian_kegiatan = [uraian1, uraian2, uraian3, uraian4]
+    .filter(Boolean)
+    .join("\n");
 
   return {
     uraian_kegiatan,
@@ -154,7 +183,8 @@ async function computePendingCounts(user) {
   const lpbsParams = [];
 
   if (lvl === "sh") {
-    bsWhere += " AND (b.status_bs IS NULL OR b.status_bs = '') AND b.warehouse = ?";
+    bsWhere +=
+      " AND (b.status_bs IS NULL OR b.status_bs = '') AND b.warehouse = ?";
     bsParams.push(warehouse);
     lpbsWhere += " AND (b.status IS NULL OR b.status = '') AND b.warehouse = ?";
     lpbsParams.push(warehouse);
@@ -169,8 +199,10 @@ async function computePendingCounts(user) {
     lpbsWhere += " AND b.status = ?";
     lpbsParams.push("approvebydh");
   } else if (lvl === "admin" || lvl === "superuser") {
-    bsWhere += " AND (b.status_bs IS NULL OR b.status_bs IN ('', 'approvebysh', 'approvebydh'))";
-    lpbsWhere += " AND (b.status IS NULL OR b.status IN ('', 'approvebysh', 'approvebydh'))";
+    bsWhere +=
+      " AND (b.status_bs IS NULL OR b.status_bs IN ('', 'approvebysh', 'approvebydh'))";
+    lpbsWhere +=
+      " AND (b.status IS NULL OR b.status IN ('', 'approvebysh', 'approvebydh'))";
   } else {
     return { bs: 0, lpbs: 0 };
   }
@@ -178,7 +210,7 @@ async function computePendingCounts(user) {
   try {
     const [bsRows] = await pool.query(
       `SELECT COUNT(DISTINCT b.no_doc) AS cnt FROM ${TABLE_BON} b WHERE ${bsWhere}`,
-      bsParams
+      bsParams,
     );
     // LPBS cuma dihitung kalau tanggalnya beneran punya transaksi (whereExists di Laravel)
     const [lpbsRows] = await pool.query(
@@ -188,7 +220,7 @@ async function computePendingCounts(user) {
          SELECT 1 FROM data_transaksi_tbl dt
          WHERE dt.tgl = b.tgl AND dt.warehouse = b.warehouse
        )`,
-      lpbsParams
+      lpbsParams,
     );
     return { bs: bsRows[0]?.cnt || 0, lpbs: lpbsRows[0]?.cnt || 0 };
   } catch (err) {
@@ -231,7 +263,8 @@ async function list(req, res) {
     }
   } else {
     // Data All belum dipilih -> default filter berdasarkan jenjang level user
-    if (level === "SH") sql += ` AND (${statusColumn} IS NULL OR ${statusColumn} = '')`;
+    if (level === "SH")
+      sql += ` AND (${statusColumn} IS NULL OR ${statusColumn} = '')`;
     else if (level === "DH") {
       sql += ` AND ${statusColumn} = ?`;
       params.push("approvebysh");
@@ -319,9 +352,10 @@ async function process(req, res) {
   const statusColumn = kategori === "lpbs" ? "status" : "status_bs";
 
   try {
-    const [rows] = await pool.query(`SELECT ${statusColumn} AS current_status FROM ${TABLE_BON} WHERE no_doc = ? LIMIT 1`, [
-      no_doc,
-    ]);
+    const [rows] = await pool.query(
+      `SELECT ${statusColumn} AS current_status FROM ${TABLE_BON} WHERE no_doc = ? LIMIT 1`,
+      [no_doc],
+    );
     if (rows.length === 0) return fail(res, "Dokumen tidak ditemukan.", 404);
     const currentStatus = rows[0].current_status;
 
@@ -335,10 +369,17 @@ async function process(req, res) {
     } else if (currentStatus === "approvebydh" && level === "HOD") {
       newStatus = "approve";
     } else {
-      return fail(res, "Approval tidak valid untuk status atau level saat ini.", 422);
+      return fail(
+        res,
+        "Approval tidak valid untuk status atau level saat ini.",
+        422,
+      );
     }
 
-    await pool.query(`UPDATE ${TABLE_BON} SET ${statusColumn} = ? WHERE no_doc = ?`, [newStatus, no_doc]);
+    await pool.query(
+      `UPDATE ${TABLE_BON} SET ${statusColumn} = ? WHERE no_doc = ?`,
+      [newStatus, no_doc],
+    );
     return ok(res, { status: newStatus }, "Dokumen berhasil diproses.");
   } catch (err) {
     console.error("[approveBongkarmuat.process]", err);
