@@ -71,9 +71,11 @@ export const pemindahanBarangApi = {
 
 // ==== Management ====
 export const managementApi = {
+  // params: { tab: "bs"|"lpbs", status, search_date }
   approveList: async (params) => (await api.get("/management/approve-bongkarmuat", { params })).data.data,
-  approveProcess: async (noDoc, action) =>
-    (await api.post(`/management/approve-bongkarmuat/${noDoc}`, { action })).data,
+  // kategori wajib dikirim ("bs"|"lpbs") biar backend tau kolom status mana yang diupdate
+  approveProcess: async (noDoc, action, kategori) =>
+    (await api.post(`/management/approve-bongkarmuat/${noDoc}`, { action, kategori })).data,
   performanceKuli: async (params) => (await api.get("/management/performance-kuli", { params })).data.data,
   balanceCash: async (params) => (await api.get("/management/balance-cash", { params })).data.data,
 };
