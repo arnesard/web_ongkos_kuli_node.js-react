@@ -109,4 +109,60 @@ async function remove(req, res) {
   }
 }
 
-module.exports = { list, create, update, remove };
+// GET /api/entry-nonreguler/uang-makan/export?tgl=&id_kuli=
+// Samain dengan OngkosController::exportUangMakan (query sama persis dengan list(), output CSV)
+async function exportCsv(req, res) {
+  const { warehouse, isSuperUser } = warehouseScope(req.user);
+  const { tgl, id_kuli } = req.query;
+
+  let sql = `
+    SELECT um.tgl, um.id_kuli, k.nama_kuli, k.warehouse,
+      (SELECT m.harga_uang_makan FROM data_uang_makan_tbl m WHERE m.tahun = YEAR(um.tgl) LIMIT 1) AS jumlah_uang_makan
+    FROM ${TABLE} um
+    JOIN data_kuli_tbl k ON um.id_kuli = k.nik
+    WHERE 1=1`;
+  const params = [];
+
+  if (!isSuperUser) {
+    sql += " AND k.warehouse = ?";
+    params.push(warehouse);
+  }
+  if (tgl) {
+    sql += " AND DATE(um.tgl) = ?";
+    params.push(tgl);
+  } else {
+    sql += " AND DATE(um.tgl) = CURDATE()";
+  }
+  if (id_kuli) {
+    sql += " AND um.id_kuli LIKE ?";
+    params.push(`%${id_kuli}%`);
+  }
+  sql += " ORDER BY um.tgl DESC";
+
+  try {
+    const [rows] = await pool.query(sql, params);
+    if (rows.length === 0) {
+      return fail(res, "Tidak ada data uang makan untuk diexport.", 422);
+    }
+
+    const header = ["Tanggal", "ID Kuli", "Nama Kuli", "Warehouse", "Jumlah Uang Makan"];
+    const csvLines = [header.join(",")];
+    rows.forEach((r) => {
+      csvLines.push(
+        [r.tgl, r.id_kuli, r.nama_kuli, r.warehouse, r.jumlah_uang_makan]
+          .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+          .join(",")
+      );
+    });
+
+    const fileName = `uang_makan_${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 15)}.csv`;
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    return res.status(200).send(csvLines.join("\n"));
+  } catch (err) {
+    console.error("[uangMakan.exportCsv]", err);
+    return fail(res, "Gagal mengexport data.", 500);
+  }
+}
+
+module.exports = { list, create, update, remove, exportCsv };

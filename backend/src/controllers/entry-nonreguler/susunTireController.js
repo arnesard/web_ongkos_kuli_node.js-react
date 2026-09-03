@@ -117,6 +117,11 @@ async function update(req, res) {
   const { id } = req.params;
   const { tgl, jenis_truk, item, pcs, kubikasi, id_kuli } = req.body;
 
+  // Samain dengan updateSusunLantai: semua field wajib diisi saat update.
+  if (!tgl || !jenis_truk || !item || pcs === undefined || pcs === "" || !kubikasi || !id_kuli) {
+    return fail(res, "Semua field wajib diisi.", 422);
+  }
+
   try {
     const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
@@ -146,4 +151,40 @@ async function remove(req, res) {
   }
 }
 
-module.exports = { list, create, update, remove, getLastKode };
+// GET /api/entry-nonreguler/susun-tire/export?tanggal=
+// Samain dengan OngkosController::exportSusunLantai (tanpa filter warehouse, sama persis Laravel)
+async function exportCsv(req, res) {
+  const { tanggal } = req.query;
+
+  let sql = `SELECT tgl, kode_transaksi, id_kuli, pcs, jenis_truk, item, warehouse, kubikasi FROM ${TABLE}`;
+  const params = [];
+  if (tanggal) {
+    sql += " WHERE DATE(tgl) = ?";
+    params.push(tanggal);
+  }
+  sql += " ORDER BY tgl DESC";
+
+  try {
+    const [rows] = await pool.query(sql, params);
+
+    const header = ["Tanggal", "Kode Transaksi", "ID Kuli", "PCS", "Jenis Truk", "Item", "Warehouse", "Kubikasi"];
+    const csvLines = [header.join(",")];
+    rows.forEach((r) => {
+      csvLines.push(
+        [r.tgl, r.kode_transaksi, r.id_kuli, r.pcs, r.jenis_truk, r.item, r.warehouse, r.kubikasi]
+          .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+          .join(",")
+      );
+    });
+
+    const fileName = `data-susunlantai-${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 15)}.csv`;
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    return res.status(200).send(csvLines.join("\n"));
+  } catch (err) {
+    console.error("[susunTire.exportCsv]", err);
+    return fail(res, "Gagal mengexport data.", 500);
+  }
+}
+
+module.exports = { list, create, update, remove, getLastKode, exportCsv };

@@ -10,6 +10,8 @@ function cleanNumber(v) {
 }
 
 // GET /api/entry-nonreguler/pemindahan-barang?tgl=
+// Samain dengan OngkosController::pemindahanBarang — sengaja TIDAK difilter warehouse
+// (query Laravel aslinya juga global per tanggal, bukan per-warehouse).
 async function list(req, res) {
   const tgl = req.query.tgl || new Date().toISOString().slice(0, 10);
 
@@ -62,6 +64,12 @@ async function update(req, res) {
   const { id } = req.params;
   const b = req.body;
 
+  // Samain dengan update(): field wajib divalidasi sebelum disimpan.
+  const required = ["tgl", "lokasi_awal", "lokasi_tujuan", "jenis_truk", "ritase", "driver", "nopol"];
+  for (const f of required) {
+    if (!b[f]) return fail(res, `Field ${f} wajib diisi.`, 422);
+  }
+
   try {
     const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
@@ -95,4 +103,61 @@ async function remove(req, res) {
   }
 }
 
-module.exports = { list, create, update, remove };
+// GET /api/entry-nonreguler/pemindahan-barang/export?tgl=
+// Samain dengan OngkosController::exportCSV — ini yang satu-satunya query di modul ini
+// yang difilter warehouse (isSuperUser check), persis kayak Laravel.
+async function exportCsv(req, res) {
+  const { warehouse, isSuperUser } = warehouseScope(req.user);
+  const { tgl } = req.query;
+
+  let sql = `SELECT * FROM ${TABLE} WHERE 1=1`;
+  const params = [];
+  if (!isSuperUser) {
+    sql += " AND warehouse = ?";
+    params.push(warehouse);
+  }
+  if (tgl) {
+    sql += " AND DATE(tgl) = ?";
+    params.push(tgl);
+  } else {
+    sql += " AND DATE(tgl) = CURDATE()";
+  }
+
+  try {
+    const [rows] = await pool.query(sql, params);
+    if (rows.length === 0) {
+      return fail(res, "Tidak ada data yang sesuai tanggal filter.", 422);
+    }
+
+    const header = [
+      "Tanggal", "Lokasi Awal", "Lokasi Tujuan", "Jenis Truk", "No Polisi", "Driver",
+      "Ritase", "Biaya Retribusi", "Biaya Security", "Biaya Parkir", "Uang Jalan", "Total Biaya", "Warehouse",
+    ];
+    const csvLines = [header.join(",")];
+    rows.forEach((r) => {
+      const total =
+        (Number(r.biaya_retribusi) || 0) +
+        (Number(r.biaya_security) || 0) +
+        (Number(r.biaya_parkir) || 0) +
+        (Number(r.biaya_uangjalan) || 0);
+      csvLines.push(
+        [
+          r.tgl, r.lokasi_awal, r.lokasi_tujuan, r.jenis_truk, r.nopol, r.driver,
+          r.ritase, r.biaya_retribusi, r.biaya_security, r.biaya_parkir, r.biaya_uangjalan, total, r.warehouse,
+        ]
+          .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+          .join(",")
+      );
+    });
+
+    const fileName = `pemindahan_barang_${tgl || new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`;
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    return res.status(200).send(csvLines.join("\n"));
+  } catch (err) {
+    console.error("[pemindahanBarang.exportCsv]", err);
+    return fail(res, "Gagal mengexport data.", 500);
+  }
+}
+
+module.exports = { list, create, update, remove, exportCsv };
