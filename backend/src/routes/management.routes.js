@@ -10,6 +10,7 @@ const report = require("../controllers/management/reportController");
 router.use(verifyToken);
 
 router.get("/performance-kuli", performance.performanceKuli);
+router.get("/performance-kuli/cetak-nota", performance.cetakNotaKuli);
 router.get("/balance-cash", balanceCash.balanceCash);
 router.get("/approve-bongkarmuat", approve.list);
 router.post("/approve-bongkarmuat/:no_doc", approve.process);

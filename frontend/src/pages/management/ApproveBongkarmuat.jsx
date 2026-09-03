@@ -187,11 +187,6 @@ export default function ApproveBongkarmuat() {
 
   return (
     <div>
-      <PageHeader
-        title="Approve Bongkar Muat"
-        subtitle="Persetujuan dokumen Bon Sementara & LPBS berjenjang (SH → DH → HOD)"
-      />
-
       {/* ===== Tombol Tab Kategori ===== */}
       <div className="glass-card panel" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 12px" }}>Kategori Approve</h3>

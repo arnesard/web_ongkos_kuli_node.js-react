@@ -16,23 +16,31 @@ function roundToHundred(value) {
   return Math.floor(intVal / 100) * 100;
 }
 
-// GET /api/management/balance-cash?warehouse=&tgl=
+// GET /api/management/balance-cash?warehouse=&tgl=&no_bon=
 // Samain dengan ManagementController::balanceCash
+//
+// CATATAN PARITAS: sama seperti performanceKuli — HOD/Superuser WAJIB pilih
+// warehouse dulu (di Laravel, `where('warehouse', null)` bikin query gak
+// pernah match apa pun kalau belum difilter).
 async function balanceCash(req, res) {
-  const { warehouse, isSuperUser, isHOD, isHighLevel } = warehouseScope(req.user);
-  const { tgl, warehouse: selectedWarehouse } = req.query;
+  const { warehouse, isHighLevel } = warehouseScope(req.user);
+  const { tgl, no_bon, warehouse: selectedWarehouse } = req.query;
+
+  if (isHighLevel && !selectedWarehouse) {
+    return ok(res, { rekap: [], requiresWarehouse: true });
+  }
   const scopeWarehouse = isHighLevel ? selectedWarehouse : warehouse;
 
   try {
-    let sql = "SELECT * FROM data_bonsementara_tbl WHERE 1=1";
-    const params = [];
-    if (scopeWarehouse) {
-      sql += " AND warehouse = ?";
-      params.push(scopeWarehouse);
-    }
+    let sql = "SELECT * FROM data_bonsementara_tbl WHERE warehouse = ?";
+    const params = [scopeWarehouse];
     if (tgl) {
       sql += " AND DATE(tgl) = ?";
       params.push(tgl);
+    }
+    if (no_bon) {
+      sql += " AND no_bon LIKE ?";
+      params.push(`%${no_bon}%`);
     }
     sql += " ORDER BY tgl DESC";
     const [rows] = await pool.query(sql, params);
