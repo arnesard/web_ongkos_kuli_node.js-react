@@ -340,11 +340,15 @@ async function process(req, res) {
   const { no_doc } = req.params;
   const { action, kategori } = req.body;
   const level = req.user.level;
-  const userLevel = String(level || "").toLowerCase();
 
-  if (userLevel === "admin") {
-    return fail(res, "Level admin tidak memiliki akses approve/reject.", 403);
-  }
+  // CATATAN: di Laravel, prosesApprove() TIDAK PERNAH ngeblok level tertentu
+  // secara eksplisit di controller — reject malah kebuka buat SEMUA level,
+  // gak ada pengecekan sama sekali. Yang membatasi cuma tombolnya di-hide di
+  // Blade buat level 'admin'. approve tetap otomatis kegate lewat pengecekan
+  // jenjang SH/DH/HOD di bawah (level lain, termasuk admin/superuser, akan
+  // selalu jatuh ke error "Approval tidak valid" kalau nyoba approve — itu
+  // yang bikin Super_User/HOD-oversight-role emang gak bisa approve, TAPI
+  // tetap bisa reject, persis kayak Laravel).
   if (!["approve", "reject"].includes(action)) {
     return fail(res, "Aksi tidak valid.", 422);
   }

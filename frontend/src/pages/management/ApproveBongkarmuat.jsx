@@ -29,25 +29,6 @@ const STATUS_OPTIONS = [
   { value: "reject", label: "Reject" },
 ];
 
-// Rupiah gak punya sen -> selalu bulatkan & jangan tampilkan desimal.
-// Sebelumnya tab BS pakai total_nilai mentah (hasil sum kuantitas desimal
-// kayak "5.1 TRONTON") jadi kebawa floating-point noise (mis. "4.673.429,3999999998")
-// dan bikin kolom Nilai wrapping 2 baris / kepotong di kanan. Tab LPBS aman
-// karena udah pakai `pembulatan` (roundToHundred) dari backend.
-function formatRupiah(value) {
-  return Math.round(Number(value || 0)).toLocaleString("id-ID", {
-    maximumFractionDigits: 0,
-  });
-}
-
-// Jenjang approval per level: kolom status HARUS persis segini sebelum level
-// itu boleh approve/reject (samain 1:1 sama validasi approveController.process
-// di backend: SH cuma boleh pas status kosong, DH pas "approvebysh", HOD pas
-// "approvebydh"). Sebelumnya frontend cuma cek `!isFinal` doang tanpa cek
-// jenjang, jadi SH ikut kelihatan tombol Approve/Reject di row yang udah
-// "DH APPROVED" — padahal backend bakal nolak (422) kalau diklik.
-const STAGE_FOR_LEVEL = { sh: "", dh: "approvebysh", hod: "approvebydh" };
-
 function formatTgl(tgl) {
   if (!tgl) return "-";
   const d = new Date(tgl);
@@ -187,6 +168,11 @@ export default function ApproveBongkarmuat() {
 
   return (
     <div>
+      <PageHeader
+        title="Approve Bongkar Muat"
+        subtitle="Persetujuan dokumen Bon Sementara & LPBS berjenjang (SH → DH → HOD)"
+      />
+
       {/* ===== Tombol Tab Kategori ===== */}
       <div className="glass-card panel" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 12px" }}>Kategori Approve</h3>
@@ -198,7 +184,7 @@ export default function ApproveBongkarmuat() {
             onClick={() => openTab("bs")}
           >
             BS
-            {userLevel !== "admin" && pendingCounts.bs > 0 && (
+            {pendingCounts.bs > 0 && (
               <span className="badge-neo danger">{pendingCounts.bs}</span>
             )}
           </button>
@@ -209,7 +195,7 @@ export default function ApproveBongkarmuat() {
             onClick={() => openTab("lpbs")}
           >
             LPBS
-            {userLevel !== "admin" && pendingCounts.lpbs > 0 && (
+            {pendingCounts.lpbs > 0 && (
               <span className="badge-neo danger">{pendingCounts.lpbs}</span>
             )}
           </button>
@@ -247,7 +233,6 @@ export default function ApproveBongkarmuat() {
           >
             <h3 style={{ margin: 0 }}>{pageTitle}</h3>
             <div
-              className="form-neo"
               style={{
                 display: "flex",
                 gap: 10,
@@ -255,7 +240,7 @@ export default function ApproveBongkarmuat() {
                 flexWrap: "wrap",
               }}
             >
-              <div className="field" style={{ minWidth: 170, marginBottom: 0 }}>
+              <div className="field" style={{ minWidth: 160, marginBottom: 0 }}>
                 <label>Tanggal</label>
                 <input
                   type="date"
@@ -299,14 +284,14 @@ export default function ApproveBongkarmuat() {
               >
                 <thead>
                   <tr style={{ textAlign: "center" }}>
-                    <th style={{ width: 44 }}>NO</th>
+                    <th>NO</th>
                     <th>Warehouse</th>
-                    <th style={{ minWidth: 110 }}>Date</th>
+                    <th>Date</th>
                     <th>No Doc</th>
                     <th style={{ textAlign: "left" }}>Uraian Kegiatan</th>
                     <th>Nilai</th>
                     <th>Status</th>
-                    <th style={{ minWidth: 190 }}>Aksi</th>
+                    <th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -320,11 +305,7 @@ export default function ApproveBongkarmuat() {
                     const isFinal =
                       rowStatus === "approve" ||
                       String(rowStatus || "").includes("reject");
-                    const requiredStage = STAGE_FOR_LEVEL[userLevel];
-                    const canAct =
-                      !isFinal &&
-                      requiredStage !== undefined &&
-                      (rowStatus || "") === requiredStage;
+                    const canAct = userLevel !== "admin" && !isFinal;
 
                     return (
                       <tr key={`${row.tgl}-${row.no_doc}`}>
@@ -333,34 +314,27 @@ export default function ApproveBongkarmuat() {
                         <td style={{ textAlign: "center" }}>
                           {formatTgl(row.tgl)}
                         </td>
-                        <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
-                          <span
+                        <td style={{ fontWeight: 600 }}>
+                          {row.no_doc}{" "}
+                          <Link
+                            to={`/${tab === "lpbs" ? "transaksi-lpbs" : "transaksi-bs"}/${encodeNoDoc(row.no_doc)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Preview / Cetak"
                             style={{
+                              marginLeft: 4,
                               display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
+                              verticalAlign: "middle",
                             }}
                           >
-                            {row.no_doc}
-                            <Link
-                              to={`/${tab === "lpbs" ? "transaksi-lpbs" : "transaksi-bs"}/${encodeNoDoc(row.no_doc)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Preview / Cetak"
-                              className="icon-btn"
-                              style={{ display: "inline-flex" }}
-                            >
-                              <Printer size={13} />
-                            </Link>
-                          </span>
+                            <Printer size={13} />
+                          </Link>
                         </td>
                         <td style={{ whiteSpace: "pre-line" }}>
                           {row.uraian_kegiatan || "-"}
                         </td>
-                        <td
-                          style={{ textAlign: "right", whiteSpace: "nowrap" }}
-                        >
-                          Rp {formatRupiah(nilaiTampil)}
+                        <td style={{ textAlign: "right" }}>
+                          Rp {Number(nilaiTampil || 0).toLocaleString("id-ID")}
                         </td>
                         <td style={{ textAlign: "center" }}>
                           <StatusBadge status={rowStatus} />
@@ -369,25 +343,21 @@ export default function ApproveBongkarmuat() {
                           {canAct ? (
                             <div
                               className="row-actions"
-                              style={{ justifyContent: "center", gap: 8 }}
+                              style={{ justifyContent: "center" }}
                             >
                               <button
-                                type="button"
-                                className="btn-neo success sm"
+                                className="icon-btn"
                                 title="Approve"
                                 onClick={() => handleAction(row, "approve")}
                               >
-                                <Check size={13} />
-                                Approve
+                                <Check size={14} />
                               </button>
                               <button
-                                type="button"
-                                className="btn-neo danger sm"
+                                className="icon-btn danger"
                                 title="Reject"
                                 onClick={() => handleAction(row, "reject")}
                               >
-                                <X size={13} />
-                                Reject
+                                <X size={14} />
                               </button>
                             </div>
                           ) : (

@@ -35,9 +35,18 @@ export default function PerformanceKuli() {
   const [loading, setLoading] = useState(true);
 
   const tableRef = useRef(null);
+  // Penjaga urutan request: fetch awal (tanpa filter, pas halaman baru dibuka)
+  // bisa aja SELESAI BELAKANGAN dibanding fetch kedua (setelah user isi
+  // filter & klik "Detail Kuli"), karena keduanya sama-sama query berat
+  // (loop per-kuli). Kalau dibiarkan, respons yang telat itu bisa NIMPA
+  // hasil yang udah benar/terfilter dengan data lama — itu penyebab data di
+  // React kelihatan beda dari Laravel padahal filter tanggalnya sama.
+  const requestIdRef = useRef(0);
 
   const fetchData = async (params = {}) => {
+    const requestId = ++requestIdRef.current;
     if (isHighLevel && !(params.warehouse ?? selectedWarehouse)) {
+      if (requestId !== requestIdRef.current) return;
       setData([]);
       setDaysInMonth(0);
       setRequiresWarehouse(true);
@@ -52,19 +61,16 @@ export default function PerformanceKuli() {
         nama_kuli: params.nama_kuli ?? namaKuli,
         warehouse: params.warehouse ?? selectedWarehouse,
       });
+      if (requestId !== requestIdRef.current) return; // ada request lebih baru -> buang hasil ini
       setData(res.data || []);
       setDaysInMonth(res.daysInMonth || 0);
       setRequiresWarehouse(!!res.requiresWarehouse);
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       console.error("[PerformanceKuli.fetchData]", err);
-      Swal.fire({
-        ...swalDark,
-        icon: "error",
-        title: "Gagal memuat data",
-        text: err.response?.data?.message,
-      });
+      Swal.fire({ ...swalDark, icon: "error", title: "Gagal memuat data", text: err.response?.data?.message });
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   };
 
@@ -94,11 +100,7 @@ export default function PerformanceKuli() {
 
   const handleCetak = () => {
     if (!tableRef.current || data.length === 0) {
-      Swal.fire({
-        ...swalDark,
-        icon: "warning",
-        title: "Tidak ada data yang akan dicetak.",
-      });
+      Swal.fire({ ...swalDark, icon: "warning", title: "Tidak ada data yang akan dicetak." });
       return;
     }
     printHtmlTable("Performance Kuli", tableRef.current.outerHTML);
@@ -111,24 +113,9 @@ export default function PerformanceKuli() {
   const notaBodyRef = useRef(null);
 
   const handleShowNota = async () => {
-    if (!startTgl)
-      return Swal.fire({
-        ...swalDark,
-        icon: "warning",
-        title: "Harap lengkapi Tanggal Mulai.",
-      });
-    if (!endTgl)
-      return Swal.fire({
-        ...swalDark,
-        icon: "warning",
-        title: "Harap lengkapi Tanggal Akhir.",
-      });
-    if (!namaKuli)
-      return Swal.fire({
-        ...swalDark,
-        icon: "warning",
-        title: "Harap lengkapi Nama Kuli.",
-      });
+    if (!startTgl) return Swal.fire({ ...swalDark, icon: "warning", title: "Harap lengkapi Tanggal Mulai." });
+    if (!endTgl) return Swal.fire({ ...swalDark, icon: "warning", title: "Harap lengkapi Tanggal Akhir." });
+    if (!namaKuli) return Swal.fire({ ...swalDark, icon: "warning", title: "Harap lengkapi Nama Kuli." });
 
     setNotaOpen(true);
     setNotaLoading(true);
@@ -143,12 +130,7 @@ export default function PerformanceKuli() {
       setNotaData(res);
     } catch (err) {
       console.error("[PerformanceKuli.handleShowNota]", err);
-      Swal.fire({
-        ...swalDark,
-        icon: "error",
-        title: "Gagal mengambil rincian",
-        text: err.response?.data?.message,
-      });
+      Swal.fire({ ...swalDark, icon: "error", title: "Gagal mengambil rincian", text: err.response?.data?.message });
       setNotaOpen(false);
     } finally {
       setNotaLoading(false);
@@ -162,33 +144,19 @@ export default function PerformanceKuli() {
 
   return (
     <div>
+      <PageHeader title="Performance Kuli" subtitle="Rekap kehadiran & pendapatan kuli per periode" />
+
       <div className="glass-card panel panel-elevated">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-            marginBottom: 12,
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <h3 style={{ margin: 0 }}>
-            <h6>Rekap kehadiran & pendapatan kuli per periode</h6>
-            {selectedWarehouse && (
-              <span className="badge-neo info" style={{ marginLeft: 8 }}>
-                {selectedWarehouse}
-              </span>
-            )}
+            Performance Kuli
+            {selectedWarehouse && <span className="badge-neo info" style={{ marginLeft: 8 }}>{selectedWarehouse}</span>}
           </h3>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="icon-btn" title="Cetak" onClick={handleCetak}>
               <Printer size={15} />
             </button>
-            <button
-              className="btn-neo ghost sm"
-              onClick={() => setShowFilter((s) => !s)}
-            >
+            <button className="btn-neo ghost sm" onClick={() => setShowFilter((s) => !s)}>
               <Search size={13} /> Detail Data Kuli
             </button>
             <button className="btn-neo ghost sm" onClick={handleResetFilter}>
@@ -198,14 +166,7 @@ export default function PerformanceKuli() {
         </div>
 
         {isHighLevel && (
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-              marginBottom: 14,
-            }}
-          >
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
             {WAREHOUSES.map((wh) => (
               <button
                 key={wh}
@@ -220,74 +181,37 @@ export default function PerformanceKuli() {
         )}
 
         {showFilter && (
-          <form
-            className="search-inline"
-            onSubmit={handleDetailKuli}
-            style={{ marginBottom: 14, flexWrap: "wrap" }}
-          >
+          <form className="search-inline" onSubmit={handleDetailKuli} style={{ marginBottom: 14, flexWrap: "wrap" }}>
             <div className="field">
               <label>Tgl</label>
-              <input
-                type="date"
-                value={startTgl}
-                onChange={(e) => setStartTgl(e.target.value)}
-              />
+              <input type="date" value={startTgl} onChange={(e) => setStartTgl(e.target.value)} />
             </div>
             <div className="field">
               <label>hingga</label>
-              <input
-                type="date"
-                value={endTgl}
-                onChange={(e) => setEndTgl(e.target.value)}
-              />
+              <input type="date" value={endTgl} onChange={(e) => setEndTgl(e.target.value)} />
             </div>
             <div className="field">
               <label>Kuli</label>
-              <input
-                type="text"
-                value={namaKuli}
-                onChange={(e) => setNamaKuli(e.target.value)}
-                placeholder="Nama kuli"
-              />
+              <input type="text" value={namaKuli} onChange={(e) => setNamaKuli(e.target.value)} placeholder="Nama kuli" />
             </div>
-            <button type="submit" className="btn-neo primary sm">
-              Detail Kuli
-            </button>
-            <button
-              type="button"
-              className="btn-neo success sm"
-              onClick={handleShowNota}
-            >
+            <button type="submit" className="btn-neo primary sm">Detail Kuli</button>
+            <button type="button" className="btn-neo success sm" onClick={handleShowNota}>
               <Receipt size={13} /> Nota Kuli
             </button>
           </form>
         )}
 
         {requiresWarehouse ? (
-          <div className="empty-state">
-            Pilih salah satu warehouse di atas dulu untuk menampilkan data.
-          </div>
+          <div className="empty-state">Pilih salah satu warehouse di atas dulu untuk menampilkan data.</div>
         ) : loading ? (
-          <div
-            className="empty-state"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
+          <div className="empty-state" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <Loader2 size={16} className="spin" /> Memuat data...
           </div>
         ) : data.length === 0 ? (
           <div className="empty-state">Belum ada data untuk periode ini.</div>
         ) : (
           <div style={{ overflowX: "auto", maxHeight: 620, overflowY: "auto" }}>
-            <table
-              ref={tableRef}
-              className="table-bordered-neo"
-              style={{ width: "100%", fontSize: 12.5 }}
-            >
+            <table ref={tableRef} className="table-bordered-neo" style={{ width: "100%", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ textAlign: "center" }}>
                   <th>NO</th>
@@ -301,9 +225,7 @@ export default function PerformanceKuli() {
               </thead>
               <tbody>
                 {data.map((d, idx) => {
-                  const persentase = daysInMonth
-                    ? (d.hadir_hari / daysInMonth) * 100
-                    : null;
+                  const persentase = daysInMonth ? (d.hadir_hari / daysInMonth) * 100 : null;
                   return (
                     <tr key={d.id_kuli} style={{ textAlign: "center" }}>
                       <td>{idx + 1}</td>
@@ -311,17 +233,8 @@ export default function PerformanceKuli() {
                       <td>{d.nama_kuli}</td>
                       <td>{d.hadir_hari}</td>
                       <td>{daysInMonth}</td>
-                      <td>
-                        {persentase !== null
-                          ? `${persentase.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
-                          : "-"}
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        Rp{" "}
-                        {Number(d.total_pendapatan || 0).toLocaleString(
-                          "id-ID",
-                        )}
-                      </td>
+                      <td>{persentase !== null ? `${persentase.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%` : "-"}</td>
+                      <td style={{ textAlign: "right" }}>Rp {Number(d.total_pendapatan || 0).toLocaleString("id-ID")}</td>
                     </tr>
                   );
                 })}
@@ -335,114 +248,39 @@ export default function PerformanceKuli() {
       {notaOpen && (
         <div
           style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.6)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
           }}
           onClick={() => setNotaOpen(false)}
         >
-          <div
-            className="glass-card panel-elevated"
-            style={{ maxWidth: 560, width: "100%", padding: 18 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
+          <div className="glass-card panel-elevated" style={{ maxWidth: 560, width: "100%", padding: 18 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <h3 style={{ margin: 0 }}>Nota Kuli - Rincian Pendapatan</h3>
-              <button className="icon-btn" onClick={() => setNotaOpen(false)}>
-                ✕
-              </button>
+              <button className="icon-btn" onClick={() => setNotaOpen(false)}>✕</button>
             </div>
 
             {notaLoading ? (
-              <div
-                className="empty-state"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
+              <div className="empty-state" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <Loader2 size={16} className="spin" /> Memuat data rincian...
               </div>
             ) : (
               <div ref={notaBodyRef}>
-                <h6>
-                  Periode Tanggal:{" "}
-                  <strong>
-                    {startTgl} - {endTgl}
-                  </strong>
-                </h6>
-                <h6>
-                  Nama Kuli: <strong>{namaKuli}</strong>
-                </h6>
+                <h6>Periode Tanggal: <strong>{startTgl} - {endTgl}</strong></h6>
+                <h6>Nama Kuli: <strong>{namaKuli}</strong></h6>
                 <hr />
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: 13,
-                  }}
-                >
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ textAlign: "center" }}>
-                      <th
-                        style={{
-                          border: "1px solid var(--glass-border)",
-                          padding: 6,
-                        }}
-                      >
-                        No
-                      </th>
-                      <th
-                        style={{
-                          border: "1px solid var(--glass-border)",
-                          padding: 6,
-                        }}
-                      >
-                        Jenis Truk
-                      </th>
-                      <th
-                        style={{
-                          border: "1px solid var(--glass-border)",
-                          padding: 6,
-                        }}
-                      >
-                        Qty
-                      </th>
-                      <th
-                        style={{
-                          border: "1px solid var(--glass-border)",
-                          padding: 6,
-                        }}
-                      >
-                        Pendapatan
-                      </th>
+                      <th style={{ border: "1px solid var(--glass-border)", padding: 6 }}>No</th>
+                      <th style={{ border: "1px solid var(--glass-border)", padding: 6 }}>Jenis Truk</th>
+                      <th style={{ border: "1px solid var(--glass-border)", padding: 6 }}>Qty</th>
+                      <th style={{ border: "1px solid var(--glass-border)", padding: 6 }}>Pendapatan</th>
                     </tr>
                   </thead>
                   <tbody>
                     {!notaData || notaData.rincian.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={4}
-                          style={{
-                            textAlign: "center",
-                            padding: 10,
-                            border: "1px solid var(--glass-border)",
-                          }}
-                        >
+                        <td colSpan={4} style={{ textAlign: "center", padding: 10, border: "1px solid var(--glass-border)" }}>
                           Tidak ada transaksi ditemukan untuk periode ini.
                         </td>
                       </tr>
@@ -450,73 +288,19 @@ export default function PerformanceKuli() {
                       <>
                         {notaData.rincian.map((r, i) => (
                           <tr key={i}>
-                            <td
-                              style={{
-                                textAlign: "center",
-                                border: "1px solid var(--glass-border)",
-                                padding: 6,
-                              }}
-                            >
-                              {i + 1}
-                            </td>
-                            <td
-                              style={{
-                                border: "1px solid var(--glass-border)",
-                                padding: 6,
-                              }}
-                            >
-                              {r.jenis}
-                            </td>
-                            <td
-                              style={{
-                                textAlign: "center",
-                                border: "1px solid var(--glass-border)",
-                                padding: 6,
-                              }}
-                            >
-                              {r.qty}
-                            </td>
-                            <td
-                              style={{
-                                textAlign: "right",
-                                border: "1px solid var(--glass-border)",
-                                padding: 6,
-                              }}
-                            >
+                            <td style={{ textAlign: "center", border: "1px solid var(--glass-border)", padding: 6 }}>{i + 1}</td>
+                            <td style={{ border: "1px solid var(--glass-border)", padding: 6 }}>{r.jenis}</td>
+                            <td style={{ textAlign: "center", border: "1px solid var(--glass-border)", padding: 6 }}>{r.qty}</td>
+                            <td style={{ textAlign: "right", border: "1px solid var(--glass-border)", padding: 6 }}>
                               {Math.round(r.pendapatan).toLocaleString("id-ID")}
                             </td>
                           </tr>
                         ))}
                         <tr className="total-row" style={{ fontWeight: 700 }}>
-                          <td
-                            colSpan={2}
-                            style={{
-                              textAlign: "right",
-                              border: "1px solid var(--glass-border)",
-                              padding: 6,
-                            }}
-                          >
-                            Total
-                          </td>
-                          <td
-                            style={{
-                              textAlign: "center",
-                              border: "1px solid var(--glass-border)",
-                              padding: 6,
-                            }}
-                          >
-                            {notaData.total_qty}
-                          </td>
-                          <td
-                            style={{
-                              textAlign: "right",
-                              border: "1px solid var(--glass-border)",
-                              padding: 6,
-                            }}
-                          >
-                            {Math.round(notaData.grand_total).toLocaleString(
-                              "id-ID",
-                            )}
+                          <td colSpan={2} style={{ textAlign: "right", border: "1px solid var(--glass-border)", padding: 6 }}>Total</td>
+                          <td style={{ textAlign: "center", border: "1px solid var(--glass-border)", padding: 6 }}>{notaData.total_qty}</td>
+                          <td style={{ textAlign: "right", border: "1px solid var(--glass-border)", padding: 6 }}>
+                            {Math.round(notaData.grand_total).toLocaleString("id-ID")}
                           </td>
                         </tr>
                       </>
@@ -526,25 +310,9 @@ export default function PerformanceKuli() {
               </div>
             )}
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-                marginTop: 14,
-              }}
-            >
-              <button
-                className="btn-neo ghost sm"
-                onClick={() => setNotaOpen(false)}
-              >
-                Tutup
-              </button>
-              <button
-                className="btn-neo primary sm"
-                onClick={handlePrintNota}
-                disabled={notaLoading}
-              >
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+              <button className="btn-neo ghost sm" onClick={() => setNotaOpen(false)}>Tutup</button>
+              <button className="btn-neo primary sm" onClick={handlePrintNota} disabled={notaLoading}>
                 <Printer size={13} /> Cetak Nota
               </button>
             </div>
