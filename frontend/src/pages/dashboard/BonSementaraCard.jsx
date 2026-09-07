@@ -104,11 +104,11 @@ export default function BonSementaraCard({ labels = [], totalTransaksi = [], uan
   };
 
   return (
-    <div className="glass-card panel dash-card-fill">
+    <div className="glass-card panel dash-card-fill dash-card-bon-sementara">
       <div className="panel-title">
         <h3>Bon Sementara Vs Aktual</h3>
       </div>
-      <div style={{ height: 260, flex: 1 }}>
+      <div style={{ flex: 1, minHeight: 160 }}>
         {labels.length > 0 ? (
           <Chart type="bar" data={data} options={options} plugins={[valueLabelsPlugin]} />
         ) : (

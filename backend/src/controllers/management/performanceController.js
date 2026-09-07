@@ -19,30 +19,54 @@ const { warehouseScope } = require("../../middleware/auth");
 // Di sini dibenerin: dicek dari warehouse yang LAGI DILIHAT (scopeWarehouse).
 // ==========================================================================
 
+// PENTING: JANGAN pakai `new Date(y, m-1, 1).toISOString()` untuk bikin string
+// tanggal awal/akhir bulan — itu bikin Date di timezone LOKAL server (WIB,
+// UTC+7), tapi toISOString() selalu convert ke UTC. Karena WIB lebih maju dari
+// UTC, "01 jam 00:00 WIB" pas dikonversi ke UTC MUNDUR ke tanggal sebelumnya
+// (mis. bulan "2026-09" bisa jadi start="2026-08-31" bukan "2026-09-01"). Ini
+// nggeser seluruh rentang query 1 hari ke belakang, nambahin 1 hari transaksi
+// "nyasar" ke HARI KERJA & PENDAPATAN (itu penyebab beda dgn Laravel). Fix:
+// susun string tanggal langsung dari komponen angka, tanpa lewat Date/UTC sama sekali.
 function monthRange(bulan) {
   const [y, m] = bulan.split("-").map(Number);
-  const start = new Date(y, m - 1, 1);
-  const end = new Date(y, m, 0);
-  const fmt = (d) => d.toISOString().slice(0, 10);
-  return [fmt(start), fmt(end)];
+  const lastDay = new Date(y, m, 0).getDate(); // cuma ambil ANGKA hari terakhir bulan itu, aman dari timezone
+  const pad = (n) => String(n).padStart(2, "0");
+  const start = `${y}-${pad(m)}-01`;
+  const end = `${y}-${pad(m)}-${pad(lastDay)}`;
+  return [start, end];
 }
 
 // GET /api/management/performance-kuli?bulan=YYYY-MM&start_tgl=&end_tgl=&nama_kuli=&warehouse=
 async function performanceKuli(req, res) {
   const { warehouse, isHighLevel } = warehouseScope(req.user);
   const { nama_kuli, warehouse: selectedWarehouse } = req.query;
-  const bulan = req.query.bulan || new Date().toISOString().slice(0, 7);
+  // Sama seperti monthRange di atas: hindari toISOString() buat "bulan ini"
+  // (bisa salah ambil bulan sebelumnya kalau jam masih dini hari WIB, 00:00-06:59).
+  const now = new Date();
+  const bulan =
+    req.query.bulan ||
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [start, end] =
-    req.query.start_tgl && req.query.end_tgl ? [req.query.start_tgl, req.query.end_tgl] : monthRange(bulan);
+    req.query.start_tgl && req.query.end_tgl
+      ? [req.query.start_tgl, req.query.end_tgl]
+      : monthRange(bulan);
 
   // HOD/Superuser wajib pilih warehouse dulu (lihat catatan paritas di atas)
   const scopeWarehouse = isHighLevel ? selectedWarehouse || null : warehouse;
   if (isHighLevel && !selectedWarehouse) {
-    return ok(res, { data: [], daysInMonth: 0, bulan, start, end, requiresWarehouse: true });
+    return ok(res, {
+      data: [],
+      daysInMonth: 0,
+      bulan,
+      start,
+      end,
+      requiresWarehouse: true,
+    });
   }
 
   try {
-    let kuliSql = "SELECT nik, nama_kuli FROM data_kuli_tbl WHERE warehouse = ?";
+    let kuliSql =
+      "SELECT nik, nama_kuli FROM data_kuli_tbl WHERE warehouse = ?";
     const kuliParams = [scopeWarehouse];
     if (nama_kuli) {
       kuliSql += " AND nama_kuli LIKE ?";
@@ -58,7 +82,11 @@ async function performanceKuli(req, res) {
     const bongkarSql = `SELECT t.no_trip, t.id_kuli, k.ongkos, t.ket, t.qty_truk
       FROM data_transaksi_tbl t JOIN data_barang_tbl k ON t.jenis_truk = k.jenis
       WHERE t.tgl BETWEEN ? AND ? AND t.warehouse = ?`;
-    const [bongkarRows] = await pool.query(bongkarSql, [start, end, scopeWarehouse]);
+    const [bongkarRows] = await pool.query(bongkarSql, [
+      start,
+      end,
+      scopeWarehouse,
+    ]);
 
     const isJMW = String(scopeWarehouse).toUpperCase() === "JMW";
     const tripRows = isJMW ? bongkarRows : muatRows;
@@ -81,22 +109,30 @@ async function performanceKuli(req, res) {
       });
     });
 
-    const [umRow] = await pool.query("SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ?", [
-      new Date().getFullYear(),
-    ]);
+    const [umRow] = await pool.query(
+      "SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ?",
+      [new Date().getFullYear()],
+    );
     const hargaUM = umRow[0]?.harga_uang_makan || 0;
 
     const [umRows] = await pool.query(
       "SELECT id_kuli FROM data_transaksi_uangmakankuli_tbl WHERE tgl BETWEEN ? AND ? AND warehouse = ?",
-      [start, end, scopeWarehouse]
+      [start, end, scopeWarehouse],
     );
     const uangMakanMap = {};
-    umRows.forEach((r) => (uangMakanMap[r.id_kuli] = (uangMakanMap[r.id_kuli] || 0) + hargaUM));
+    umRows.forEach(
+      (r) =>
+        (uangMakanMap[r.id_kuli] = (uangMakanMap[r.id_kuli] || 0) + hargaUM),
+    );
 
     const susunSql = `SELECT s.kode_transaksi, s.id_kuli, k.biaya_truk
       FROM data_transaksi_susunlantai_tbl s JOIN data_kendaraan_tbl k ON s.jenis_truk = k.nama_kendaraan
       WHERE s.tgl BETWEEN ? AND ? AND s.warehouse = ?`;
-    const [susunRows] = await pool.query(susunSql, [start, end, scopeWarehouse]);
+    const [susunRows] = await pool.query(susunSql, [
+      start,
+      end,
+      scopeWarehouse,
+    ]);
     const pendapatanSusun = {};
     const byKode = {};
     susunRows.forEach((r) => {
@@ -114,7 +150,7 @@ async function performanceKuli(req, res) {
     // Hari aktif keseluruhan warehouse dalam periode (dipakai sebagai penyebut "HARI KERJA")
     const [daysRow] = await pool.query(
       "SELECT COUNT(DISTINCT DATE(tgl)) AS cnt FROM data_transaksi_tbl WHERE tgl BETWEEN ? AND ? AND warehouse = ?",
-      [start, end, scopeWarehouse]
+      [start, end, scopeWarehouse],
     );
     const daysInMonth = daysRow[0]?.cnt || 0;
 
@@ -122,7 +158,7 @@ async function performanceKuli(req, res) {
     for (const k of kulis) {
       const [hadirRows] = await pool.query(
         "SELECT COUNT(DISTINCT DATE(tgl)) AS hadir FROM data_transaksi_tbl WHERE id_kuli = ? AND tgl BETWEEN ? AND ? AND warehouse = ?",
-        [k.nik, start, end, scopeWarehouse]
+        [k.nik, start, end, scopeWarehouse],
       );
       const pm = pendapatanMuat[k.nik] || 0;
       const um = uangMakanMap[k.nik] || 0;
@@ -147,13 +183,19 @@ async function performanceKuli(req, res) {
 // Rincian breakdown pendapatan SATU kuli (buat modal + cetak struk "Nota Kuli")
 // Samain 1:1 dengan ManagementController::cetakNotaKuli
 async function cetakNotaKuli(req, res) {
-  const { start_tgl, end_tgl, nama_kuli, warehouse: selectedWarehouse } = req.query;
+  const {
+    start_tgl,
+    end_tgl,
+    nama_kuli,
+    warehouse: selectedWarehouse,
+  } = req.query;
   if (!start_tgl || !end_tgl || !nama_kuli) {
     return fail(res, "Data filter tidak lengkap.", 400);
   }
 
   try {
-    let kuliSql = "SELECT nik, warehouse FROM data_kuli_tbl WHERE nama_kuli = ?";
+    let kuliSql =
+      "SELECT nik, warehouse FROM data_kuli_tbl WHERE nama_kuli = ?";
     const kuliParams = [nama_kuli];
     if (selectedWarehouse) {
       kuliSql += " AND warehouse = ?";
@@ -174,7 +216,7 @@ async function cetakNotaKuli(req, res) {
       `SELECT t.jenis_truk, t.qty_truk, t.ket, t.no_trip, ${biayaColumn} AS biaya_unit
        FROM data_transaksi_tbl t JOIN ${joinTable} k ON t.jenis_truk = ${joinColumn}
        WHERE t.tgl BETWEEN ? AND ? AND t.id_kuli = ? AND t.warehouse = ?`,
-      [start_tgl, end_tgl, idKuli, kuli.warehouse]
+      [start_tgl, end_tgl, idKuli, kuli.warehouse],
     );
 
     const noTripList = [...new Set(transaksi.map((t) => t.no_trip))];
@@ -183,7 +225,7 @@ async function cetakNotaKuli(req, res) {
       const placeholders = noTripList.map(() => "?").join(",");
       const [rows] = await pool.query(
         `SELECT no_trip, id_kuli, jenis_truk, ket FROM data_transaksi_tbl WHERE no_trip IN (${placeholders}) AND warehouse = ?`,
-        [...noTripList, kuli.warehouse]
+        [...noTripList, kuli.warehouse],
       );
       allKuliInTrip = rows;
     }
@@ -192,14 +234,20 @@ async function cetakNotaKuli(req, res) {
     let totalPendapatanMuat = 0;
     transaksi.forEach((t) => {
       const key = `${t.jenis_truk}|${t.ket}`;
-      const jumlahKuli = allKuliInTrip.filter((r) => r.no_trip === t.no_trip && r.ket === t.ket).length;
+      const jumlahKuli = allKuliInTrip.filter(
+        (r) => r.no_trip === t.no_trip && r.ket === t.ket,
+      ).length;
       const qtyTruk = Number(String(t.qty_truk || 0).replace(",", "."));
       const biaya = Number(String(t.biaya_unit || 0).replace(",", "."));
       const totalBiayaTrip = biaya * qtyTruk;
       const share = jumlahKuli > 0 ? totalBiayaTrip / jumlahKuli : 0;
 
       if (!rincianMuat[key]) {
-        rincianMuat[key] = { jenis: t.jenis_truk + (t.ket ? ` (${t.ket})` : ""), qty: 0, pendapatan: 0 };
+        rincianMuat[key] = {
+          jenis: t.jenis_truk + (t.ket ? ` (${t.ket})` : ""),
+          qty: 0,
+          pendapatan: 0,
+        };
       }
       rincianMuat[key].qty += 1;
       rincianMuat[key].pendapatan += share;
@@ -208,25 +256,30 @@ async function cetakNotaKuli(req, res) {
 
     let rincianNota = Object.values(rincianMuat);
 
-    const [umRow] = await pool.query("SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ?", [
-      new Date().getFullYear(),
-    ]);
+    const [umRow] = await pool.query(
+      "SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ?",
+      [new Date().getFullYear()],
+    );
     const hargaUM = Number(umRow[0]?.harga_uang_makan || 0);
     const [umCountRow] = await pool.query(
       "SELECT COUNT(*) AS cnt FROM data_transaksi_uangmakankuli_tbl WHERE tgl BETWEEN ? AND ? AND id_kuli = ? AND warehouse = ?",
-      [start_tgl, end_tgl, idKuli, kuli.warehouse]
+      [start_tgl, end_tgl, idKuli, kuli.warehouse],
     );
     const jumlahUangMakan = umCountRow[0]?.cnt || 0;
     const totalUangMakan = jumlahUangMakan * hargaUM;
     if (jumlahUangMakan > 0) {
-      rincianNota.push({ jenis: "Uang Makan", qty: jumlahUangMakan, pendapatan: totalUangMakan });
+      rincianNota.push({
+        jenis: "Uang Makan",
+        qty: jumlahUangMakan,
+        pendapatan: totalUangMakan,
+      });
     }
 
     const [susun] = await pool.query(
       `SELECT t.kode_transaksi, t.jenis_truk, k.biaya_truk
        FROM data_transaksi_susunlantai_tbl t JOIN data_kendaraan_tbl k ON t.jenis_truk = k.nama_kendaraan
        WHERE t.tgl BETWEEN ? AND ? AND t.id_kuli = ? AND t.warehouse = ?`,
-      [start_tgl, end_tgl, idKuli, kuli.warehouse]
+      [start_tgl, end_tgl, idKuli, kuli.warehouse],
     );
     const kodeSusunList = [...new Set(susun.map((s) => s.kode_transaksi))];
     let allKuliInSusun = [];
@@ -234,7 +287,7 @@ async function cetakNotaKuli(req, res) {
       const placeholders = kodeSusunList.map(() => "?").join(",");
       const [rows] = await pool.query(
         `SELECT kode_transaksi, id_kuli FROM data_transaksi_susunlantai_tbl WHERE kode_transaksi IN (${placeholders}) AND warehouse = ?`,
-        [...kodeSusunList, kuli.warehouse]
+        [...kodeSusunList, kuli.warehouse],
       );
       allKuliInSusun = rows;
     }
@@ -242,20 +295,28 @@ async function cetakNotaKuli(req, res) {
     let totalPendapatanSusun = 0;
     susun.forEach((t) => {
       const biaya = Number(String(t.biaya_truk || 0).replace(",", "."));
-      const jumlahKuli = allKuliInSusun.filter((r) => r.kode_transaksi === t.kode_transaksi).length;
+      const jumlahKuli = allKuliInSusun.filter(
+        (r) => r.kode_transaksi === t.kode_transaksi,
+      ).length;
       const share = jumlahKuli > 0 ? biaya / jumlahKuli : 0;
       const key = `Susun Lantai ${t.jenis_truk}`;
-      if (!rincianSusun[key]) rincianSusun[key] = { jenis: key, qty: 0, pendapatan: 0 };
+      if (!rincianSusun[key])
+        rincianSusun[key] = { jenis: key, qty: 0, pendapatan: 0 };
       rincianSusun[key].qty += 1;
       rincianSusun[key].pendapatan += share;
       totalPendapatanSusun += share;
     });
     rincianNota = rincianNota.concat(Object.values(rincianSusun));
 
-    const grandTotal = totalPendapatanMuat + totalUangMakan + totalPendapatanSusun;
+    const grandTotal =
+      totalPendapatanMuat + totalUangMakan + totalPendapatanSusun;
     const totalQty = rincianNota.reduce((s, r) => s + r.qty, 0);
 
-    return ok(res, { rincian: rincianNota, grand_total: grandTotal, total_qty: totalQty });
+    return ok(res, {
+      rincian: rincianNota,
+      grand_total: grandTotal,
+      total_qty: totalQty,
+    });
   } catch (err) {
     console.error("[cetakNotaKuli]", err);
     return fail(res, "Gagal mengambil data rincian dari server.", 500);

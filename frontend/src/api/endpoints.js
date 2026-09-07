@@ -104,10 +104,13 @@ export const managementApi = {
   // kategori wajib dikirim ("bs"|"lpbs") biar backend tau kolom status mana yang diupdate
   approveProcess: async (noDoc, action, kategori) =>
     (
-      await api.post(`/management/approve-bongkarmuat/${noDoc}`, {
-        action,
-        kategori,
-      })
+      await api.post(
+        `/management/approve-bongkarmuat/${encodeURIComponent(noDoc)}`,
+        {
+          action,
+          kategori,
+        },
+      )
     ).data,
   performanceKuli: async (params) =>
     (await api.get("/management/performance-kuli", { params })).data.data,

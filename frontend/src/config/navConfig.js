@@ -18,9 +18,17 @@ export const navConfig = [
     // Sesuai matrix akses: role SH cuma lihat Dashboard & Management
     hideForRoles: ["SH"],
     children: [
-      { key: "bon-sementara", label: "Permintaan Bon Sementara", path: "/bon-sementara" },
+      {
+        key: "bon-sementara",
+        label: "Permintaan Bon Sementara",
+        path: "/bon-sementara",
+      },
       { key: "muat-fg", label: "Muat Barang FG Warehouse", path: "/muat-fg" },
-      { key: "bongkar-rm", label: "Bongkar Muat Barang RM Warehouse", path: "/bongkar-rm" },
+      {
+        key: "bongkar-rm",
+        label: "Bongkar Muat Barang RM Warehouse",
+        path: "/bongkar-rm",
+      },
     ],
   },
   {
@@ -31,9 +39,17 @@ export const navConfig = [
     hideForRoles: ["SH"],
     children: [
       { key: "uang-makan", label: "Uang Makan Kuli", path: "/uang-makan" },
-      { key: "susun-tire", label: "Susun Tire Lantai/Rak", path: "/susun-tire" },
-      { key: "pemindahan-barang", label: "Pemindahan Barang", path: "/pemindahan-barang" },
-      { key: "bongkar-luar", label: "Bongkar Luar", path: "/bongkar-luar" },
+      {
+        key: "susun-tire",
+        label: "Susun Tire Lantai/Rak",
+        path: "/susun-tire",
+      },
+      {
+        key: "pemindahan-barang",
+        label: "Pemindahan Barang",
+        path: "/pemindahan-barang",
+      },
+      // { key: "bongkar-luar", label: "Bongkar Luar", path: "/bongkar-luar" },
     ],
   },
   {
@@ -42,8 +58,16 @@ export const navConfig = [
     label: "Management",
     icon: "ShieldCheck",
     children: [
-      { key: "approve-bongkarmuat", label: "Approve Bongkarmuat", path: "/approve-bongkarmuat" },
-      { key: "performance-kuli", label: "Performance Kuli", path: "/performance-kuli" },
+      {
+        key: "approve-bongkarmuat",
+        label: "Approve Bongkarmuat",
+        path: "/approve-bongkarmuat",
+      },
+      {
+        key: "performance-kuli",
+        label: "Performance Kuli",
+        path: "/performance-kuli",
+      },
       { key: "balance-cash", label: "Balance Cash", path: "/balance-cash" },
     ],
   },
@@ -56,8 +80,16 @@ export const navConfig = [
     children: [
       { key: "daftar-kuli", label: "Daftar Nama Kuli", path: "/daftar-kuli" },
       { key: "harga-um", label: "Harga Uang Makan", path: "/harga-um" },
-      { key: "kendaraan-fg", label: "Kendaraan FG Warehouse", path: "/kendaraan-fg" },
-      { key: "jenis-barang", label: "Jenis Barang RM Warehouse", path: "/jenis-barang" },
+      {
+        key: "kendaraan-fg",
+        label: "Kendaraan FG Warehouse",
+        path: "/kendaraan-fg",
+      },
+      {
+        key: "jenis-barang",
+        label: "Jenis Barang RM Warehouse",
+        path: "/jenis-barang",
+      },
       { key: "data-user", label: "Data User", path: "/data-user" },
     ],
   },

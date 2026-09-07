@@ -91,7 +91,7 @@ export default function BonSementara() {
       ...swalDark,
       icon: "warning",
       title: "Data sudah di-approve",
-      text: "Data yang sudah di-approve SH tidak bisa diedit atau dihapus.",
+      text: "Data yang sudah di-approve tidak bisa diedit atau dihapus.",
     });
   };
 

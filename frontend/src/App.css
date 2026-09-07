@@ -1,8 +1,9 @@
 /* ===== App Shell ===== */
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
+  overflow: hidden;
 }
 
 /* ===== Sidebar ===== */
@@ -289,12 +290,34 @@
 .content-area {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 .page-body {
   padding: 24px 26px 60px;
   flex: 1;
+  min-height: 0;
+}
+/* Halaman Dashboard: dipaksa fit 1 layar (samain kayak Laravel), scroll cuma di dalam
+   list-list kecil (unperform/skema/usia), bukan di seluruh halaman. */
+.page-body:has(.dashboard-page) {
+  padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+/* .panel bawaan punya margin-bottom:20px buat halaman biasa yg ditumpuk vertikal —
+   di dashboard, card2 dikontrol via gap flex/grid, jadi margin ini cuma makan tinggi layar. */
+.dashboard-page .panel {
+  margin-bottom: 0;
 }
 
 .page-header {
@@ -1120,10 +1143,15 @@
   grid-template-columns: 320px 1fr;
   gap: 16px;
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 @media (max-width: 1100px) {
   .dash-grid {
     grid-template-columns: 1fr;
+    /* di layar sempit, konten pasti lebih tinggi dari 1 layar — biarkan scroll wajar */
+    flex: none;
+    overflow-y: auto;
   }
 }
 
@@ -1133,13 +1161,12 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-}
-.dash-col-left {
   height: 100%;
   min-height: 0;
 }
 .dash-col-left > .dash-card-tall {
   flex: 1;
+  min-height: 0;
 }
 
 .dash-card-tall {
@@ -1151,6 +1178,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 }
 
 .dash-subsection {
@@ -1203,7 +1231,7 @@
   overflow: hidden;
   flex: 1 1 220px; /* flex-grow:1 — biar melebar isi ruang kosong kayak Laravel, bukan mentok kecil */
   min-width: 220px;
-  padding: 16px 18px 30px;
+  padding: 12px 18px 16px;
   border-radius: var(--radius-sm);
   background: linear-gradient(
     135deg,
@@ -1227,8 +1255,8 @@
   text-align: center;
 }
 .spark-card-chart {
-  height: 46px;
-  margin-top: 8px;
+  height: 30px;
+  margin-top: 6px;
   opacity: 0.85;
 }
 .spark-card-pct {
@@ -1272,10 +1300,13 @@
   grid-template-columns: 1fr 2fr;
   gap: 16px;
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 @media (max-width: 900px) {
   .dash-mid-row {
     grid-template-columns: 1fr;
+    flex: none;
   }
 }
 .dash-mid-col-4,
@@ -1284,6 +1315,16 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+  min-height: 0;
+}
+.dash-mid-col-8 > .dash-card-fill {
+  flex: 1;
+  min-height: 0;
+}
+/* Bon Sementara Vs Aktual — dibikin gak ikut ngestretch penuh sisa tinggi kolom */
+.dash-card-bon-sementara {
+  flex: 0 1 260px;
+  max-height: 260px;
 }
 
 /* Kuli Unperform / Usia Kuli scrollable table */
@@ -1294,7 +1335,7 @@
   overflow-y: auto;
 }
 .usia-scroll {
-  max-height: 210px;
+  max-height: 150px;
 }
 .unperform-table {
   width: 100%;
@@ -1340,7 +1381,7 @@
 .skema-scroll {
   flex: 1;
   min-height: 0;
-  max-height: 320px;
+  max-height: 400px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

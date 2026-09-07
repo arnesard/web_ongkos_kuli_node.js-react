@@ -21,7 +21,10 @@ function toMillion(v) {
 function isHighLevelUser(user) {
   const level = user?.level || "";
   const warehouse = user?.warehouse || "";
-  return ["HOD", "Superuser"].includes(level) || ["Super_User", "HOD"].includes(warehouse);
+  return (
+    ["HOD", "Superuser"].includes(level) ||
+    ["Super_User", "HOD"].includes(warehouse)
+  );
 }
 
 export default function Dashboard() {
@@ -35,7 +38,11 @@ export default function Dashboard() {
     let mounted = true;
     setLoading(true);
     dashboardApi
-      .index(isHighLevel && selectedWarehouse ? { warehouse: selectedWarehouse } : undefined)
+      .index(
+        isHighLevel && selectedWarehouse
+          ? { warehouse: selectedWarehouse }
+          : undefined,
+      )
       .then((data) => mounted && setDash(data))
       .catch((err) => console.error("[Dashboard] gagal memuat data:", err))
       .finally(() => mounted && setLoading(false));
@@ -46,22 +53,38 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="empty-state" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+      <div
+        className="empty-state"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+        }}
+      >
         <Loader2 size={16} className="spin" /> Memuat dashboard...
       </div>
     );
   }
 
   if (!dash) {
-    return <div className="empty-state">Gagal memuat data dashboard. Cek koneksi ke backend.</div>;
+    return (
+      <div className="empty-state">
+        Gagal memuat data dashboard. Cek koneksi ke backend.
+      </div>
+    );
   }
 
   // ---- Transform: Kapasitas Kuli (dataAktual per tanggal) ----
-  const aktualEntries = Object.entries(dash.dataAktual || {}).sort(([a], [b]) => (a < b ? -1 : 1));
+  const aktualEntries = Object.entries(dash.dataAktual || {}).sort(
+    ([a], [b]) => (a < b ? -1 : 1),
+  );
   const kapasitasLabels = aktualEntries.map(([tgl]) => tgl.slice(-2)); // tanggal saja
   const totalKuli = dash.totalKuli || 0;
   const kuliDatang = aktualEntries.map(([, v]) => v);
-  const kuliTidakDatang = aktualEntries.map(([, v]) => Math.max(totalKuli - v, 0));
+  const kuliTidakDatang = aktualEntries.map(([, v]) =>
+    Math.max(totalKuli - v, 0),
+  );
 
   const unperformData = (dash.dataKuliUnperform || []).map((k) => ({
     dept: k.department,
@@ -74,22 +97,32 @@ export default function Dashboard() {
   const skemaPembayaran = dash.dataSkemaPembayaran || [];
 
   // ---- Transform: Usia kuli ----
-  const mapUsia = (arr = []) => arr.map((k) => ({ dept: k.department, nama: k.nama_kuli, usia: k.usia }));
+  const mapUsia = (arr = []) =>
+    arr.map((k) => ({ dept: k.department, nama: k.nama_kuli, usia: k.usia }));
 
   // ---- Transform: Rekap Bon Sementara vs Aktual (agregat lintas warehouse per tanggal) ----
   // "Uang Dari Cashier" pakai act_nilai (yg BENERAN dicairkan cashier), bukan nilai
   // (yg cuma diajukan) — samain dgn Laravel. Selisih = Cashier (act_nilai) - Aktual (total_transaksi).
   const rekapByTgl = {};
   (dash.rekap || []).forEach((r) => {
-    rekapByTgl[r.tgl] = rekapByTgl[r.tgl] || { total_aktual: 0, total_transaksi: 0 };
+    rekapByTgl[r.tgl] = rekapByTgl[r.tgl] || {
+      total_aktual: 0,
+      total_transaksi: 0,
+    };
     rekapByTgl[r.tgl].total_aktual += Number(r.total_aktual || 0);
     rekapByTgl[r.tgl].total_transaksi += Number(r.total_transaksi || 0);
   });
-  const rekapSorted = Object.entries(rekapByTgl).sort(([a], [b]) => (a < b ? -1 : 1));
+  const rekapSorted = Object.entries(rekapByTgl).sort(([a], [b]) =>
+    a < b ? -1 : 1,
+  );
   const rekapLabels = rekapSorted.map(([tgl]) => tgl.slice(-2));
-  const rekapTotalTransaksi = rekapSorted.map(([, v]) => toMillion(v.total_transaksi));
+  const rekapTotalTransaksi = rekapSorted.map(([, v]) =>
+    toMillion(v.total_transaksi),
+  );
   const rekapUangBon = rekapSorted.map(([, v]) => toMillion(v.total_aktual));
-  const rekapSelisih = rekapSorted.map(([, v]) => toMillion(v.total_aktual - v.total_transaksi));
+  const rekapSelisih = rekapSorted.map(([, v]) =>
+    toMillion(v.total_aktual - v.total_transaksi),
+  );
 
   // ---- Transform: Warehouse spark ----
   const warehouseList = Object.keys(dash.nominalHariIni || {});
@@ -101,14 +134,12 @@ export default function Dashboard() {
   }));
   // Card TOTAL cuma tampil pas admin/HOD lihat "ALL" (belum milih warehouse spesifik)
   // dan warehouse-nya lebih dari satu — samain dgn Laravel.
-  const showTotalCard = isHighLevel && !selectedWarehouse && warehouseSpark.length > 1;
+  const showTotalCard =
+    isHighLevel && !selectedWarehouse && warehouseSpark.length > 1;
 
   return (
-    <div>
-      <PageHeader
-        title={`Selamat datang, ${user?.nama || "User"}`}
-        subtitle="Ringkasan aktivitas operasional ongkos kuli hari ini"
-      />
+    <div className="dashboard-page">
+      <PageHeader title={`Selamat datang, ${user?.nama || "User"}`} />
 
       {isHighLevel && (
         <div className="dash-warehouse-filter">
@@ -124,7 +155,11 @@ export default function Dashboard() {
                 {wh}
               </button>
             ))}
-            <button type="button" className="btn-neo sm danger" onClick={() => setSelectedWarehouse(null)}>
+            <button
+              type="button"
+              className="btn-neo sm danger"
+              onClick={() => setSelectedWarehouse(null)}
+            >
               Reset Filter
             </button>
           </div>
@@ -143,13 +178,19 @@ export default function Dashboard() {
 
         <div className="dash-col-right">
           {(warehouseSpark.length > 0 || showTotalCard) && (
-            <div className={`spark-row${isHighLevel ? " spark-row-compact" : ""}`}>
+            <div
+              className={`spark-row${isHighLevel ? " spark-row-compact" : ""}`}
+            >
               {showTotalCard && (
                 <WarehouseSparkCard
                   warehouse="HARI INI"
                   nominal={dash.totalBonSementara?.nominal || 0}
                   persen={dash.totalBonSementara?.persen || 0}
-                  trend={dash.totalBonSementara?.trend?.length ? dash.totalBonSementara.trend : [0]}
+                  trend={
+                    dash.totalBonSementara?.trend?.length
+                      ? dash.totalBonSementara.trend
+                      : [0]
+                  }
                   isTotal
                 />
               )}

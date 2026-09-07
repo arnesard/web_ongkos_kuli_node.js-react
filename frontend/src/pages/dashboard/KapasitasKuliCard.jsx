@@ -68,7 +68,7 @@ export default function KapasitasKuliCard({ labels = [], kuliDatang = [], kuliTi
       <div className="panel-title">
         <h3>Kapasitas Kuli Vs Aktual</h3>
       </div>
-      <div style={{ height: 260 }}>
+      <div style={{ flex: "1.1 1 0", minHeight: 150 }}>
         <Bar data={kapasitasChartData} options={kapasitasChartOptions} />
       </div>
 

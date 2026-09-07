@@ -101,7 +101,8 @@ export default function Bantuan() {
               color: "var(--text-secondary)",
             }}
           >
-            <Phone size={16} style={{ color: "var(--accent-2)" }} /> 08119518095
+            <Phone size={16} style={{ color: "var(--accent-2)" }} /> +62
+            8119518095
           </div>
         </div>
       </div>
