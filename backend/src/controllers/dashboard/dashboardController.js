@@ -171,9 +171,32 @@ async function index(req, res) {
       sparklineData[r.warehouse].push(Number(r.total_nilai));
     });
 
+    // ── TOTAL BON SEMENTARA HARI INI (agregat lintas warehouse — card besar admin) ──
+    // Cuma relevan buat admin yg lihat ALL warehouse sekaligus; card ini yg dipakai
+    // Laravel utk "TOTAL BON SEMENTARA HARI INI" di atas daftar per-warehouse.
+    const totalNominalHariIni = Object.values(nominalHariIni).reduce((s, v) => s + v, 0);
+    const totalAktualHariIni = bonHariIniRows.reduce((s, r) => s + Number(r.total_aktual || 0), 0);
+    const totalPersenHariIni =
+      totalNominalHariIni > 0 ? Math.round((totalAktualHariIni / totalNominalHariIni) * 100) : 0;
+    const totalSparklineMap = {};
+    sparkRows.forEach((r) => {
+      totalSparklineMap[r.tgl] = (totalSparklineMap[r.tgl] || 0) + Number(r.total_nilai);
+    });
+    const totalSparkline = Object.keys(totalSparklineMap)
+      .sort()
+      .map((tgl) => totalSparklineMap[tgl]);
+    const totalBonSementara = {
+      nominal: totalNominalHariIni,
+      persen: totalPersenHariIni,
+      trend: totalSparkline.length ? totalSparkline : [0],
+    };
+
     // ── REKAP BON VS AKTUAL VS TRANSAKSI (grouped per warehouse + tgl, expand Jumat) ──
-    let bonSql = "SELECT tgl, warehouse, nilai, act_nilai FROM data_bonsementara_tbl WHERE 1=1";
-    const bonParams = [];
+    // Dibatasi ke bulan berjalan — samain dgn Laravel (source of truth). Sebelumnya
+    // query ini narik SELURUH histori data_bonsementara_tbl tanpa filter tanggal,
+    // makanya chart-nya jadi rapat/dense (banyak titik) beda sama tampilan Laravel.
+    let bonSql = "SELECT tgl, warehouse, nilai, act_nilai FROM data_bonsementara_tbl WHERE tgl LIKE ?";
+    const bonParams = [`${currentMonth}%`];
     if (activeFilter) {
       bonSql += " AND warehouse = ?";
       bonParams.push(activeFilter);
@@ -396,20 +419,39 @@ async function index(req, res) {
       .filter((k) => k.usia !== null && k.usia >= 50)
       .sort(byUsiaDesc);
 
-    // ── TRIP PER KULI HARI INI ──
-    let tripSql = `SELECT k.nama_kuli, COUNT(DISTINCT t.no_trip) AS total_trip_hari_ini
+    // ── SKEMA PEMBAYARAN KULI HARI INI (dept + nama + jumlah trip + nominal) ──
+    // Samain dgn Laravel: list "DEPT || NAMA || N TRIP || Rp X", bukan chart jumlah trip doang.
+    let tripSql = `SELECT k.nik AS id_kuli, k.nama_kuli, k.warehouse AS department,
+      COUNT(DISTINCT t.no_trip) AS total_trip_hari_ini
       FROM data_transaksi_tbl t JOIN data_kuli_tbl k ON t.id_kuli = k.nik WHERE t.tgl = ?`;
     const tripParams = [today];
     if (activeFilter) {
       tripSql += " AND t.warehouse = ?";
       tripParams.push(activeFilter);
     }
-    tripSql += " GROUP BY k.nama_kuli ORDER BY total_trip_hari_ini DESC";
+    tripSql += " GROUP BY k.nik, k.nama_kuli, k.warehouse ORDER BY total_trip_hari_ini DESC";
     const [tripRows] = await pool.query(tripSql, tripParams);
-    const kuliPerTripChartData = {
-      labels: tripRows.map((r) => r.nama_kuli),
-      data: tripRows.map((r) => r.total_trip_hari_ini),
-    };
+
+    // Nominal harian per kuli — pakai kalkulasi yg sama dgn calcPendapatanMuat
+    // bulanan (qty_truk x biaya_truk per no_trip/ket, dibagi rata), tapi scope-nya
+    // cuma hari ini. isJMW reuse dari kalkulasi bulanan di atas.
+    const skemaJoinSql = isJMW
+      ? `SELECT t.no_trip, t.id_kuli, k.ongkos AS biaya, t.ket, t.qty_truk FROM data_transaksi_tbl t
+         JOIN data_barang_tbl k ON t.jenis_truk = k.jenis WHERE t.tgl = ? ${activeFilter ? "AND t.warehouse = ?" : ""}`
+      : `SELECT t.no_trip, t.id_kuli, k.biaya_truk AS biaya, t.ket, t.qty_truk FROM data_transaksi_tbl t
+         JOIN data_kendaraan_tbl k ON t.jenis_truk = k.nama_kendaraan WHERE t.tgl = ? ${activeFilter ? "AND t.warehouse = ?" : ""}`;
+    const [skemaRows] = await pool.query(skemaJoinSql, activeFilter ? [today, activeFilter] : [today]);
+    const pendapatanHariIni = calcPendapatanMuat(skemaRows);
+
+    const dataSkemaPembayaran = tripRows
+      .map((r) => ({
+        id_kuli: r.id_kuli,
+        nama_kuli: r.nama_kuli,
+        department: r.department,
+        total_trip: r.total_trip_hari_ini,
+        nominal: Math.round(pendapatanHariIni[r.id_kuli] || 0),
+      }))
+      .sort((a, b) => b.nominal - a.nominal || b.total_trip - a.total_trip);
 
     return ok(res, {
       dataKapasitas,
@@ -420,6 +462,7 @@ async function index(req, res) {
       nominalHariIni,
       persentaseHariIni,
       sparklineData,
+      totalBonSementara,
       daysInMonth,
       // Tidak dibatasi 10 — samain dgn Laravel (source of truth) yg mengirim
       // SEMUA kuli terurut ascending percentage; pembatasan tampilan cukup lewat scroll di frontend.
@@ -427,7 +470,7 @@ async function index(req, res) {
       kuliUsiaDibawah35,
       kuliUsiaProduktif,
       kuliUsiaSenior,
-      dataKuliTripHarian: kuliPerTripChartData,
+      dataSkemaPembayaran,
     });
   } catch (err) {
     console.error("[dashboard.index]", err);

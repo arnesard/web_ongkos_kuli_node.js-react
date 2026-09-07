@@ -12,13 +12,43 @@ import {
 
 ChartJS.register(LineElement, PointElement, BarElement, LinearScale, CategoryScale, Tooltip, Legend);
 
+function formatJt(v) {
+  const sign = v < 0 ? "-" : "";
+  return `${sign}Rp. ${Math.abs(v).toFixed(1)} JT`;
+}
+
+// Plugin manual (tanpa nambah dependency) buat nampilin label angka di atas/bawah
+// titik data — samain gaya Laravel yg pakai chartjs-plugin-datalabels.
+const valueLabelsPlugin = {
+  id: "valueLabels",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((ds, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (meta.hidden) return;
+      ctx.save();
+      ctx.font = "10px sans-serif";
+      ctx.textAlign = "center";
+      meta.data.forEach((el, i) => {
+        const value = ds.data[i];
+        if (value === undefined || value === null) return;
+        ctx.fillStyle = ds.borderColor || ds.backgroundColor;
+        const isBar = ds.type === "bar";
+        const y = isBar ? el.y - 6 : el.y + (value < 0 ? 14 : -8);
+        ctx.fillText(formatJt(value), el.x, y);
+      });
+      ctx.restore();
+    });
+  },
+};
+
 export default function BonSementaraCard({ labels = [], totalTransaksi = [], uangBon = [], selisih = [] }) {
   const data = {
     labels,
     datasets: [
       {
         type: "bar",
-        label: "Total Transaksi Aktual",
+        label: "Total Uang Transaksi",
         data: totalTransaksi,
         backgroundColor: "rgba(34, 224, 160, 0.7)",
         borderRadius: 4,
@@ -27,7 +57,7 @@ export default function BonSementaraCard({ labels = [], totalTransaksi = [], uan
       },
       {
         type: "line",
-        label: "Bon Sementara Diajukan",
+        label: "Uang Dari Cashier",
         data: uangBon,
         borderColor: "#7c4dff",
         backgroundColor: "#7c4dff",
@@ -37,7 +67,7 @@ export default function BonSementaraCard({ labels = [], totalTransaksi = [], uan
       },
       {
         type: "line",
-        label: "Selisih (Bon - Transaksi)",
+        label: "Selisih (Cashier - Aktual)",
         data: selisih,
         borderColor: "#ff5470",
         backgroundColor: "#ff5470",
@@ -52,6 +82,7 @@ export default function BonSementaraCard({ labels = [], totalTransaksi = [], uan
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { top: 22, bottom: 18 } },
     plugins: {
       legend: { position: "bottom", labels: { color: "#93a5c9", boxWidth: 12, font: { size: 11 } } },
       tooltip: { mode: "index", intersect: false },
@@ -79,7 +110,7 @@ export default function BonSementaraCard({ labels = [], totalTransaksi = [], uan
       </div>
       <div style={{ height: 260, flex: 1 }}>
         {labels.length > 0 ? (
-          <Chart type="bar" data={data} options={options} />
+          <Chart type="bar" data={data} options={options} plugins={[valueLabelsPlugin]} />
         ) : (
           <div className="empty-state">Belum ada data bon sementara</div>
         )}

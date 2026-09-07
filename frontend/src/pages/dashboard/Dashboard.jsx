@@ -70,25 +70,26 @@ export default function Dashboard() {
     total: k.days_in_month || dash.daysInMonth || 0,
   }));
 
-  // ---- Transform: Trip kuli hari ini ----
-  const tripLabels = dash.dataKuliTripHarian?.labels || [];
-  const tripData = dash.dataKuliTripHarian?.data || [];
+  // ---- Transform: Skema Pembayaran Kuli (hari ini) ----
+  const skemaPembayaran = dash.dataSkemaPembayaran || [];
 
   // ---- Transform: Usia kuli ----
   const mapUsia = (arr = []) => arr.map((k) => ({ dept: k.department, nama: k.nama_kuli, usia: k.usia }));
 
   // ---- Transform: Rekap Bon Sementara vs Aktual (agregat lintas warehouse per tanggal) ----
+  // "Uang Dari Cashier" pakai act_nilai (yg BENERAN dicairkan cashier), bukan nilai
+  // (yg cuma diajukan) — samain dgn Laravel. Selisih = Cashier (act_nilai) - Aktual (total_transaksi).
   const rekapByTgl = {};
   (dash.rekap || []).forEach((r) => {
-    rekapByTgl[r.tgl] = rekapByTgl[r.tgl] || { total_bon: 0, total_transaksi: 0 };
-    rekapByTgl[r.tgl].total_bon += Number(r.total_bon || 0);
+    rekapByTgl[r.tgl] = rekapByTgl[r.tgl] || { total_aktual: 0, total_transaksi: 0 };
+    rekapByTgl[r.tgl].total_aktual += Number(r.total_aktual || 0);
     rekapByTgl[r.tgl].total_transaksi += Number(r.total_transaksi || 0);
   });
   const rekapSorted = Object.entries(rekapByTgl).sort(([a], [b]) => (a < b ? -1 : 1));
   const rekapLabels = rekapSorted.map(([tgl]) => tgl.slice(-2));
   const rekapTotalTransaksi = rekapSorted.map(([, v]) => toMillion(v.total_transaksi));
-  const rekapUangBon = rekapSorted.map(([, v]) => toMillion(v.total_bon));
-  const rekapSelisih = rekapSorted.map(([, v]) => toMillion(v.total_bon - v.total_transaksi));
+  const rekapUangBon = rekapSorted.map(([, v]) => toMillion(v.total_aktual));
+  const rekapSelisih = rekapSorted.map(([, v]) => toMillion(v.total_aktual - v.total_transaksi));
 
   // ---- Transform: Warehouse spark ----
   const warehouseList = Object.keys(dash.nominalHariIni || {});
@@ -98,6 +99,9 @@ export default function Dashboard() {
     persen: dash.persentaseHariIni?.[wh] || 0,
     trend: dash.sparklineData?.[wh]?.length ? dash.sparklineData[wh] : [0],
   }));
+  // Card TOTAL cuma tampil pas admin/HOD lihat "ALL" (belum milih warehouse spesifik)
+  // dan warehouse-nya lebih dari satu — samain dgn Laravel.
+  const showTotalCard = isHighLevel && !selectedWarehouse && warehouseSpark.length > 1;
 
   return (
     <div>
@@ -138,8 +142,17 @@ export default function Dashboard() {
         </div>
 
         <div className="dash-col-right">
-          {warehouseSpark.length > 0 && (
-            <div className="spark-row">
+          {(warehouseSpark.length > 0 || showTotalCard) && (
+            <div className={`spark-row${isHighLevel ? " spark-row-compact" : ""}`}>
+              {showTotalCard && (
+                <WarehouseSparkCard
+                  warehouse="HARI INI"
+                  nominal={dash.totalBonSementara?.nominal || 0}
+                  persen={dash.totalBonSementara?.persen || 0}
+                  trend={dash.totalBonSementara?.trend?.length ? dash.totalBonSementara.trend : [0]}
+                  isTotal
+                />
+              )}
               {warehouseSpark.map((wh) => (
                 <WarehouseSparkCard key={wh.warehouse} {...wh} />
               ))}
@@ -148,7 +161,7 @@ export default function Dashboard() {
 
           <div className="dash-mid-row">
             <div className="dash-mid-col-4">
-              <SkemaPembayaranCard labels={tripLabels} data={tripData} />
+              <SkemaPembayaranCard data={skemaPembayaran} />
             </div>
             <div className="dash-mid-col-8">
               <UsiaKuliCard

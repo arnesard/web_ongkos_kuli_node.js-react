@@ -1,46 +1,29 @@
-import { Bar } from "react-chartjs-2";
+function formatRupiahShort(nominal) {
+  const n = Number(nominal) || 0;
+  if (n >= 1_000_000) return `Rp. ${(n / 1_000_000).toFixed(1)}Jt`;
+  if (n >= 1_000) return `Rp. ${(n / 1_000).toFixed(1)}K`;
+  return `Rp. ${n}`;
+}
 
-export default function SkemaPembayaranCard({ labels = [], data = [] }) {
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        label: "Jumlah Trip",
-        data,
-        backgroundColor: "rgba(34, 224, 160, 0.65)",
-        hoverBackgroundColor: "rgba(34, 224, 160, 0.9)",
-        borderRadius: 4,
-        maxBarThickness: 22,
-      },
-    ],
-  };
-
-  const options = {
-    indexAxis: "y",
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: {
-        ticks: { color: "#5d6d8f", font: { size: 10 }, stepSize: 1 },
-        grid: { color: "rgba(90,150,255,0.08)" },
-        title: { display: true, text: "Jumlah Trip", color: "#5d6d8f", font: { size: 10 } },
-      },
-      y: {
-        ticks: { color: "#93a5c9", font: { size: 10.5 } },
-        grid: { display: false },
-      },
-    },
-  };
-
+export default function SkemaPembayaranCard({ data = [] }) {
   return (
     <div className="glass-card panel dash-card-fill">
       <div className="panel-title">
-        <h3>Trip Kuli Hari Ini</h3>
+        <h3>Skema Pembayaran Kuli</h3>
       </div>
-      <div style={{ height: 320, flex: 1 }}>
-        {labels.length > 0 ? (
-          <Bar data={chartData} options={options} />
+      <div className="skema-scroll">
+        {data.length > 0 ? (
+          data.map((row, i) => (
+            <div className="skema-row" key={row.id_kuli + i}>
+              <span className="skema-dept">{row.department}</span>
+              <span className="skema-sep">||</span>
+              <span className="skema-nama">{row.nama_kuli}</span>
+              <span className="skema-sep">||</span>
+              <span className="skema-trip">{row.total_trip} TRIP</span>
+              <span className="skema-sep">||</span>
+              <span className="skema-nominal">{formatRupiahShort(row.nominal)}</span>
+            </div>
+          ))
         ) : (
           <div className="empty-state">Belum ada trip hari ini</div>
         )}
