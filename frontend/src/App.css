@@ -22,6 +22,7 @@
     width 0.25s ease,
     opacity 0.2s ease,
     border-color 0.2s ease;
+  cursor: pointer;
 }
 .sidebar.collapsed {
   width: 76px;
@@ -60,6 +61,7 @@
     rgba(47, 125, 255, 0.14),
     transparent 70%
   );
+  cursor: pointer;
 }
 .sidebar-brand .brand-mark {
   width: 54px;
@@ -74,9 +76,11 @@
   color: #fff;
 }
 .sidebar-brand h1 {
+  max-width: 220px;
+  margin: 0 auto 2px;
   font-size: 15px;
-  color: var(--text-primary);
-  margin-bottom: 2px;
+  line-height: 1.25;
+  font-weight: 700;
 }
 .sidebar-brand p {
   margin: 0;
@@ -95,7 +99,6 @@
 .sidebar-user b {
   color: var(--text-primary);
 }
-
 .sidebar-nav {
   padding: 14px 12px 20px;
   flex: 1;
@@ -251,7 +254,7 @@
   gap: 8px;
   padding: 7px 12px;
   border-radius: 999px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid transparent !important;
   background: rgba(16, 26, 51, 0.5);
   font-size: 12.5px;
   color: var(--text-secondary);
@@ -444,9 +447,64 @@
   color: var(--text-secondary) !important;
   border-top: 1px solid var(--glass-border) !important;
 }
-.rdt-neo-wrapper .rdt_Pagination svg {
+.rdt-neo-wrapper .rdt_pagination {
+  --rdt-color-background: transparent;
+  --rdt-color-divider: var(--glass-border);
+  background: transparent !important;
+  border-top: 1px solid var(--glass-border) !important;
+  color: var(--text-secondary) !important;
+}
+.rdt-neo-wrapper .rdt_selectWrapper {
+  height: 30px;
+  margin-left: 8px;
+  border: 1px solid transparent !important;
+  border-radius: 6px;
+  background: var(--bg-panel-2) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.rdt-neo-wrapper .rdt_selectWrapper:focus-within {
+  border-color: rgba(47, 125, 255, 0.85) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.12) !important;
+}
+.rdt-neo-wrapper .rdt_selectWrapper svg {
+  color: var(--text-secondary) !important;
+}
+.rdt-neo-wrapper .rdt_Pagination select,
+.rdt-neo-wrapper .rdt_pagination select {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 48px;
+  height: 30px;
+  padding: 0 24px 0 9px;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  background: var(--bg-panel-2);
+  font: inherit;
+  line-height: 28px;
+  vertical-align: middle;
+  outline: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.rdt-neo-wrapper .rdt_Pagination select:focus,
+.rdt-neo-wrapper .rdt_pagination select:focus {
+  outline: none;
+  border-color: rgba(47, 125, 255, 0.85) !important;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.12);
+}
+.rdt-neo-wrapper .rdt_Pagination select option,
+.rdt-neo-wrapper .rdt_pagination select option {
+  color: var(--text-primary);
+  background: var(--bg-panel-2);
+}
+.rdt-neo-wrapper .rdt_Pagination svg,
+.rdt-neo-wrapper .rdt_pagination svg {
   fill: var(--text-secondary) !important;
 }
+.rdt-neo-wrapper .rdt_pagination button:disabled svg,
 .rdt-neo-wrapper button:disabled svg {
   fill: var(--text-muted) !important;
 }
@@ -652,14 +710,33 @@
 .field-grid-compact .field-full {
   grid-column: 1 / -1;
 }
+.pemindahan-form-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px 10px;
+}
+.pemindahan-form-grid .field-grid-compact {
+  display: contents;
+}
+.pemindahan-form-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
 @media (max-width: 900px) {
   .field-grid-compact {
     grid-template-columns: repeat(3, 1fr);
+  }
+  .pemindahan-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 560px) {
   .field-grid-compact {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .pemindahan-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .form-compact .field {
@@ -702,6 +779,43 @@
   padding: 7px 14px;
   font-size: 12px;
 }
+/* Filter halaman Management tidak perlu memenuhi satu baris. Tanpa aturan ini
+   `.search-inline .field { flex: 1 }` membuat setiap kolom berjauhan. */
+.management-filter-row .field {
+  flex: 0 1 170px;
+}
+.management-filter-row .field:last-of-type {
+  flex-basis: 220px;
+}
+.management-filter-row input {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--text-primary);
+  background: rgba(6, 12, 26, 0.7);
+  border: 1px solid var(--glass-border);
+  border-radius: 7px;
+  font: inherit;
+  outline: none;
+  color-scheme: dark;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.management-filter-row input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+.management-filter-row input:focus {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
+}
+@media (max-width: 560px) {
+  .management-filter-row .field,
+  .management-filter-row .field:last-of-type {
+    flex-basis: 100%;
+  }
+}
 
 /* ===== Tabel bergaris (samain muat-fg-tabel.blade.php) ===== */
 .table-bordered-neo {
@@ -714,6 +828,131 @@
 }
 .table-bordered-neo thead th {
   background: rgba(16, 26, 51, 0.75);
+}
+.approve-table {
+  table-layout: fixed;
+}
+.approve-table th,
+.approve-table td {
+  padding: 7px 6px;
+  vertical-align: middle;
+  overflow: hidden;
+}
+.approve-table .col-no {
+  width: 4%;
+  min-width: 34px;
+}
+.approve-table .col-warehouse {
+  width: 7%;
+}
+.approve-table .col-date {
+  width: 10%;
+  min-width: 92px;
+}
+.approve-table .col-doc {
+  width: 12%;
+}
+.approve-table .col-print {
+  width: 4%;
+  min-width: 34px;
+}
+.approve-table .col-description {
+  width: 36%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.approve-table .col-value {
+  width: 12%;
+  min-width: 105px;
+}
+.approve-table .col-status {
+  width: 10%;
+  min-width: 82px;
+}
+.approve-table .col-actions {
+  width: 12%;
+  min-width: 122px;
+}
+.approve-table .badge-neo {
+  display: inline-flex;
+  min-width: 0;
+  padding: 4px 7px;
+  border-radius: 7px;
+  font-size: 9px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.approve-print-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-2);
+}
+.approve-action {
+  min-width: 54px;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.approve-action-yes {
+  color: #081d17;
+  background: var(--success);
+  border-color: rgba(34, 224, 160, 0.7);
+}
+.approve-action-no {
+  color: #fff;
+  background: var(--danger);
+  border-color: rgba(255, 84, 112, 0.7);
+}
+.approve-date-filter {
+  color-scheme: dark;
+  color: var(--text-primary);
+  background: var(--bg-panel-2);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 7px;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 7px 9px !important;
+  font: inherit;
+  line-height: 18px;
+}
+.approve-table-wrap {
+  margin-top: 8px;
+}
+.approve-content-header {
+  margin-top: -4px;
+}
+.approve-filter-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.approve-filter-field label {
+  display: block;
+  margin: 0;
+  line-height: 1.1;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.approve-filter-field .select-neo,
+.approve-filter-field .approve-date-filter {
+  width: 100%;
+}
+.approve-date-filter:focus {
+  outline: none;
+  border-color: var(--accent-2) !important;
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
+}
+.table-detail-neo thead th {
+  background: #fce9b7;
+  color: #1a1a1a;
+  border-color: #8d7a3a;
 }
 .table-bordered-neo tr.row-summary {
   background: transparent;
@@ -770,19 +1009,20 @@
 }
 
 .table-detail-neo {
-  background: #ffffff;
+  background: #5b86b3;
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08);
 }
 .table-detail-neo thead th {
-  background: #f1f3f6;
-  color: #0a0a0a;
+  background: #5b86b3 !important;
+  color: #071b31;
+  border-color: rgba(0, 0, 0, 0.18) !important;
   opacity: 1;
   font-weight: 800;
   text-shadow: none;
 }
 .table-detail-neo tbody td {
-  background: transparent;
-  color: #0a0a0a;
+  background: #5b86b3 !important;
+  color: #071b31;
   font-weight: 600;
   text-shadow: none;
 }
@@ -791,13 +1031,14 @@
 }
 .table-detail-neo th,
 .table-detail-neo td {
-  border-color: rgba(0, 0, 0, 0.18);
+  border-color: rgba(0, 0, 0, 0.18) !important;
 }
 /* Label kolom (th) di dalam tbody — dipakai sebagai label "Tanggal", "Lokasi Awal", dst
    di tabel detail accordion (Pemindahan Barang). Sebelumnya th ini ikut kena style thead
    gelap punya tema utama, jadi teksnya pudar di atas background putih. */
 .table-detail-neo tbody th {
-  background: #f1f3f6;
+  background: #5b86b3 !important;
+  color: #071b31;
   color: #0a0a0a;
   opacity: 1;
   font-weight: 800;

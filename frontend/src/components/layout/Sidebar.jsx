@@ -9,7 +9,6 @@ import {
   LifeBuoy,
   ChevronDown,
   LogOut,
-  Truck,
 } from "lucide-react";
 import { navConfig } from "../../config/navConfig";
 import { useAuth } from "../../context/AuthContext";
@@ -26,7 +25,7 @@ const ICONS = {
 
 // open: true = sidebar penuh (lengkap teks). false = mengecil (icon doang).
 // onExpand: dipanggil buat melebarin sidebar (klik item apapun pas lagi kecil).
-// onCollapse: dipanggil setelah navigasi lewat menu (klik item pas lagi lebar).
+// onCollapse: dipanggil setelah navigasi lewat menu atau klik area sidebar.
 export default function Sidebar({
   open,
   onExpand,
@@ -66,8 +65,12 @@ export default function Sidebar({
 
   // Pas lagi kecil (collapsed), klik di mana aja area sidebar langsung melebarin,
   // nggak perlu pas-pasan ngeklik iconnya doang.
-  const handleSidebarClick = () => {
-    if (!open) onExpand();
+  const handleSidebarClick = (event) => {
+    if (!open) {
+      onExpand();
+    } else if (!event.target.closest("a, button, .sidebar-logout")) {
+      onCollapse();
+    }
   };
 
   return (
@@ -75,7 +78,18 @@ export default function Sidebar({
       className={`sidebar${open ? "" : " collapsed"}`}
       onClick={handleSidebarClick}
     >
-      <div className="sidebar-brand">
+      <div
+        className="sidebar-brand"
+        onClick={(event) => {
+          event.stopPropagation();
+          open ? onCollapse() : onExpand();
+        }}
+        title={
+          open
+            ? "Klik untuk mengecilkan sidebar"
+            : "Klik untuk membesarkan sidebar"
+        }
+      >
         <div className="brand-mark">
           <img src="/images/logo-gt.png" alt="Logo GT" width={40} height={40} />
         </div>

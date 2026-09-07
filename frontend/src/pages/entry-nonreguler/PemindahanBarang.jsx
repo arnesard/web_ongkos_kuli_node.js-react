@@ -19,9 +19,7 @@ import { pemindahanBarangApi } from "../../api/endpoints";
 //   resources/views/components/pemindahan-barang-input.blade.php -> form (inline, 3 baris) + tabel accordion
 //   OngkosController::pemindahanBarang / store / update / destroy / exportCSV
 //
-// Form: Baris 1 = Tanggal / Lokasi Awal / Lokasi Tujuan / tombol Simpan
-//       Baris 2 = Jenis Kendaraan / No Polisi / Nama Supir / Ritase
-//       Baris 3 = 4 field Biaya (label sama "Biaya", dibedain lewat placeholder)
+// Form: 2 baris field + 1 baris tombol Simpan sendiri.
 // Tabel: 1 baris ringkasan (NO/TANGGAL/LOKASI AWAL/TUJUAN/RITASE/TOTAL BIAYA) yang bisa
 // diklik untuk expand -> detail label:value (Tanggal/Lokasi Awal/Lokasi Tujuan/Action,
 // Jenis Kendaraan/No Polisi/Nama Supir/Ritase, lalu 4 komponen Biaya).
@@ -257,158 +255,160 @@ export default function PemindahanBarang() {
 
   return (
     <div>
-      {/* ===== FORM INPUT (samain 3 baris di pemindahan-barang-input.blade.php) ===== */}
+      {/* ===== FORM INPUT (2 baris field + tombol sendiri) ===== */}
       <div
         className="glass-card panel panel-elevated"
         style={{ marginBottom: 16, padding: 14 }}
       >
         <form className="form-neo form-compact" onSubmit={handleSubmit}>
-          {/* Baris 1 */}
-          <div className="field-grid-compact">
-            <div className="field">
-              <label htmlFor="tgl">Tanggal</label>
-              <input
-                type="date"
-                id="tgl"
-                value={form.tgl}
-                onChange={(e) => handleChange("tgl", e.target.value)}
-                required
-              />
+          <div className="pemindahan-form-grid">
+            {/* Field dibuat satu grid supaya 6 kolom desktop mengalir menjadi 2 baris */}
+            <div className="field-grid-compact">
+              <div className="field">
+                <label htmlFor="tgl">Tanggal</label>
+                <input
+                  type="date"
+                  id="tgl"
+                  value={form.tgl}
+                  onChange={(e) => handleChange("tgl", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="lokasi_awal">Lokasi Awal</label>
+                <input
+                  type="text"
+                  id="lokasi_awal"
+                  value={form.lokasi_awal}
+                  onChange={(e) => handleChange("lokasi_awal", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="lokasi_tujuan">Lokasi Tujuan</label>
+                <input
+                  type="text"
+                  id="lokasi_tujuan"
+                  value={form.lokasi_tujuan}
+                  onChange={(e) =>
+                    handleChange("lokasi_tujuan", e.target.value)
+                  }
+                  required
+                />
+              </div>
             </div>
-            <div className="field">
-              <label htmlFor="lokasi_awal">Lokasi Awal</label>
-              <input
-                type="text"
-                id="lokasi_awal"
-                value={form.lokasi_awal}
-                onChange={(e) => handleChange("lokasi_awal", e.target.value)}
-                required
-              />
+
+            <div className="field-grid-compact" style={{ marginTop: 10 }}>
+              <div className="field">
+                <label htmlFor="jenis_truk">Jenis Kendaraan</label>
+                <SelectNeo
+                  id="jenis_truk"
+                  name="jenis_truk"
+                  value={form.jenis_truk}
+                  onChange={handleChange}
+                  options={kendaraan}
+                  placeholder="-- Pilih Kendaraan --"
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="nopol">No Polisi</label>
+                <input
+                  type="text"
+                  id="nopol"
+                  value={form.nopol}
+                  onChange={(e) =>
+                    handleChange("nopol", e.target.value.toUpperCase())
+                  }
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="driver">Nama Supir</label>
+                <input
+                  type="text"
+                  id="driver"
+                  value={form.driver}
+                  onChange={(e) => handleChange("driver", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="ritase">Ritase</label>
+                <input
+                  type="text"
+                  id="ritase"
+                  value={form.ritase}
+                  onChange={(e) => handleChange("ritase", e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            <div className="field">
-              <label htmlFor="lokasi_tujuan">Lokasi Tujuan</label>
-              <input
-                type="text"
-                id="lokasi_tujuan"
-                value={form.lokasi_tujuan}
-                onChange={(e) => handleChange("lokasi_tujuan", e.target.value)}
-                required
-              />
-            </div>
-            <div className="field" style={{ alignSelf: "end" }}>
-              <button
-                type="submit"
-                className="btn-neo primary sm"
-                disabled={saving}
-                style={{ width: "100%" }}
-              >
-                {saving ? "Menyimpan..." : editingId ? "Update" : "Simpan"}
-              </button>
+
+            <div className="field-grid-compact" style={{ marginTop: 10 }}>
+              <div className="field">
+                <label htmlFor="biaya_retribusi">Biaya</label>
+                <input
+                  type="text"
+                  id="biaya_retribusi"
+                  placeholder="Retribusi"
+                  inputMode="numeric"
+                  value={form.biaya_retribusi}
+                  onChange={(e) =>
+                    handleBiayaChange("biaya_retribusi", e.target.value)
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="biaya_security">Biaya</label>
+                <input
+                  type="text"
+                  id="biaya_security"
+                  placeholder="Security"
+                  inputMode="numeric"
+                  value={form.biaya_security}
+                  onChange={(e) =>
+                    handleBiayaChange("biaya_security", e.target.value)
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="biaya_parkir">Biaya</label>
+                <input
+                  type="text"
+                  id="biaya_parkir"
+                  placeholder="TPR Kampung"
+                  inputMode="numeric"
+                  value={form.biaya_parkir}
+                  onChange={(e) =>
+                    handleBiayaChange("biaya_parkir", e.target.value)
+                  }
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="biaya_uangjalan">Biaya</label>
+                <input
+                  type="text"
+                  id="biaya_uangjalan"
+                  placeholder="Uang Jalan"
+                  inputMode="numeric"
+                  value={form.biaya_uangjalan}
+                  onChange={(e) =>
+                    handleBiayaChange("biaya_uangjalan", e.target.value)
+                  }
+                />
+              </div>
             </div>
           </div>
 
-          {/* Baris 2 */}
-          <div className="field-grid-compact" style={{ marginTop: 10 }}>
-            <div className="field">
-              <label htmlFor="jenis_truk">Jenis Kendaraan</label>
-              <SelectNeo
-                id="jenis_truk"
-                name="jenis_truk"
-                value={form.jenis_truk}
-                onChange={handleChange}
-                options={kendaraan}
-                placeholder="-- Pilih Kendaraan --"
-                required
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="nopol">No Polisi</label>
-              <input
-                type="text"
-                id="nopol"
-                value={form.nopol}
-                onChange={(e) =>
-                  handleChange("nopol", e.target.value.toUpperCase())
-                }
-                required
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="driver">Nama Supir</label>
-              <input
-                type="text"
-                id="driver"
-                value={form.driver}
-                onChange={(e) => handleChange("driver", e.target.value)}
-                required
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="ritase">Ritase</label>
-              <input
-                type="text"
-                id="ritase"
-                value={form.ritase}
-                onChange={(e) => handleChange("ritase", e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Baris 3 — 4 field Biaya, dibedain lewat placeholder (samain Laravel) */}
-          <div className="field-grid-compact" style={{ marginTop: 10 }}>
-            <div className="field">
-              <label htmlFor="biaya_retribusi">Biaya</label>
-              <input
-                type="text"
-                id="biaya_retribusi"
-                placeholder="Retribusi"
-                inputMode="numeric"
-                value={form.biaya_retribusi}
-                onChange={(e) =>
-                  handleBiayaChange("biaya_retribusi", e.target.value)
-                }
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="biaya_security">Biaya</label>
-              <input
-                type="text"
-                id="biaya_security"
-                placeholder="Security"
-                inputMode="numeric"
-                value={form.biaya_security}
-                onChange={(e) =>
-                  handleBiayaChange("biaya_security", e.target.value)
-                }
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="biaya_parkir">Biaya</label>
-              <input
-                type="text"
-                id="biaya_parkir"
-                placeholder="TPR Kampung"
-                inputMode="numeric"
-                value={form.biaya_parkir}
-                onChange={(e) =>
-                  handleBiayaChange("biaya_parkir", e.target.value)
-                }
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="biaya_uangjalan">Biaya</label>
-              <input
-                type="text"
-                id="biaya_uangjalan"
-                placeholder="Uang Jalan"
-                inputMode="numeric"
-                value={form.biaya_uangjalan}
-                onChange={(e) =>
-                  handleBiayaChange("biaya_uangjalan", e.target.value)
-                }
-              />
-            </div>
+          <div className="pemindahan-form-actions">
+            <button
+              type="submit"
+              className="btn-neo primary sm"
+              disabled={saving}
+            >
+              {saving ? "Menyimpan..." : editingId ? "Update" : "Simpan"}
+            </button>
           </div>
 
           {editingId && (

@@ -46,6 +46,7 @@ export default function UangMakan() {
   // ---- Dropdown Kuli: bisa diketik (filter) & bisa dipilih, tema sama kayak dropdown lain ----
   const [kuliSearchText, setKuliSearchText] = useState("");
   const [kuliOpen, setKuliOpen] = useState(false);
+  const [selectedKuli, setSelectedKuli] = useState([]);
   const kuliBoxRef = useRef(null);
 
   const fetchList = async (filters = appliedFilters) => {
@@ -94,9 +95,22 @@ export default function UangMakan() {
   }, [nk, kuliSearchText]);
 
   const pickKuli = (k) => {
-    setForm((f) => ({ ...f, id_kuli: k.nik }));
-    setKuliSearchText(`${k.nik} (${k.nama_kuli})`);
-    setKuliOpen(false);
+    if (editingId) {
+      setForm((f) => ({ ...f, id_kuli: k.nik }));
+      setSelectedKuli([k]);
+      setKuliSearchText(`${k.nik} (${k.nama_kuli})`);
+      setKuliOpen(false);
+      return;
+    }
+    setSelectedKuli((prev) =>
+      prev.some((item) => item.nik === k.nik) ? prev : [...prev, k],
+    );
+    setKuliSearchText("");
+    setKuliOpen(true);
+  };
+
+  const removeKuli = (nik) => {
+    setSelectedKuli((prev) => prev.filter((item) => item.nik !== nik));
   };
 
   // Bisa ketik bebas juga (misal langsung ketik NIK-nya tanpa buka dropdown) —
@@ -110,19 +124,24 @@ export default function UangMakan() {
   const resetForm = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setSelectedKuli([]);
     setKuliSearchText("");
   };
 
   const openEdit = (row) => {
     setEditingId(row.id);
     setForm({ tgl: row.tgl, id_kuli: row.id_kuli });
+    setSelectedKuli([{ nik: row.id_kuli, nama_kuli: row.nama_kuli }]);
     setKuliSearchText(`${row.id_kuli} (${row.nama_kuli})`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.tgl || !form.id_kuli) {
+    const kuliIds = editingId
+      ? [form.id_kuli]
+      : selectedKuli.map((item) => item.nik);
+    if (!form.tgl || kuliIds.length === 0 || !kuliIds[0]) {
       Swal.fire({
         ...swalDark,
         icon: "warning",
@@ -142,11 +161,15 @@ export default function UangMakan() {
           showConfirmButton: false,
         });
       } else {
-        await uangMakanApi.create(form);
+        await Promise.all(
+          kuliIds.map((id_kuli) =>
+            uangMakanApi.create({ tgl: form.tgl, id_kuli }),
+          ),
+        );
         Swal.fire({
           ...swalDark,
           icon: "success",
-          title: "Data berhasil ditambahkan.",
+          title: `${kuliIds.length} data berhasil ditambahkan.`,
           timer: 1300,
           showConfirmButton: false,
         });
@@ -289,6 +312,23 @@ export default function UangMakan() {
                     padding: "4px 2px",
                   }}
                 />
+                {!editingId &&
+                  selectedKuli.map((k) => (
+                    <span className="chip-neo" key={k.nik}>
+                      {k.nik} ({k.nama_kuli})
+                      <button
+                        type="button"
+                        className="chip-remove"
+                        title={`Hapus ${k.nama_kuli}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeKuli(k.nik);
+                        }}
+                      >
+                        x
+                      </button>
+                    </span>
+                  ))}
               </div>
               {kuliOpen && filteredKuli.length > 0 && (
                 <div
@@ -302,7 +342,9 @@ export default function UangMakan() {
                   }}
                 >
                   {filteredKuli.map((k) => {
-                    const picked = form.id_kuli === k.nik;
+                    const picked = editingId
+                      ? form.id_kuli === k.nik
+                      : selectedKuli.some((item) => item.nik === k.nik);
                     return (
                       <div
                         key={k.nik}
@@ -323,7 +365,7 @@ export default function UangMakan() {
                 type="submit"
                 className="btn-neo primary sm"
                 disabled={saving}
-                style={{ width: "100%" }}
+                style={{ width: "max-content", minWidth: 88 }}
               >
                 {saving ? "Menyimpan..." : editingId ? "Update" : "Tambah"}
               </button>

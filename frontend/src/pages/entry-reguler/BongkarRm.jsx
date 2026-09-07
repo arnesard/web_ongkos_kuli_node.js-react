@@ -34,10 +34,8 @@ import { bongkarRmApi, lookupApi } from "../../api/endpoints";
 // - No. Trip pakai prefix huruf Z tetap + 2 digit (pattern ^Z[0-9]{2}$).
 // - Field Kuli TETAP bisa diedit walau row lain sedang mode edit (di Blade,
 //   select id_kuli nggak punya atribut disabled saat edit) — beda dari field lain.
-// - Fitur lock "APPROVE": begitu Bon Sementara tanggal itu sudah berstatus
-//   (status_bs terisi), tombol edit/hapus di baris detail diganti label APPROVE,
-//   samain kondisi `$status == null && $status == ''` di Blade (intinya: locked
-//   kalau $status truthy).
+// - Fitur lock: begitu Bon Sementara tanggal itu sudah berstatus, tombol
+//   edit/hapus di baris detail dikunci seperti kondisi Blade.
 // ==========================================================================
 
 const swalDark = {
@@ -906,7 +904,7 @@ export default function BongkarRm() {
           <div className="table-scroll-neo" style={{ overflow: "auto" }}>
             <table className="table-bordered-neo" style={{ fontSize: 12.5 }}>
               <thead className="sticky-thead">
-                <tr style={{ textAlign: "center", opacity: 0.85 }}>
+                <tr style={{ textAlign: "center" }}>
                   <th style={{ padding: "8px 6px" }}>NO</th>
                   <th style={{ padding: "8px 6px" }}>Tanggal</th>
                   <th style={{ padding: "8px 6px" }}>Market</th>
@@ -954,8 +952,8 @@ export default function BongkarRm() {
 
 // Baris ringkasan per No. Trip + baris detail (bisa di-expand/collapse) per Kuli,
 // sama seperti struktur accordion di bongkar-rm-tabel.blade.php. Kalau isLocked
-// (Bon Sementara tanggal ybs sudah berstatus), tombol edit/hapus diganti label
-// APPROVE — samain kondisi `$status == null && $status == ''` di Blade.
+// (Bon Sementara tanggal ybs sudah berstatus), tombol edit/hapus dikunci
+// seperti kondisi `$status == null && $status == ''` di Blade.
 function FragmentRow({
   idx,
   trip,
@@ -1037,7 +1035,7 @@ function FragmentRow({
                             fontWeight: 700,
                           }}
                         >
-                          APPROVE
+                          TERKUNCI
                         </p>
                       ) : (
                         <div

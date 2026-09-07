@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
-import { Check, X, Loader2, ClipboardList, Printer } from "lucide-react";
-import PageHeader from "../../components/common/PageHeader";
+import { Loader2, ClipboardList, Printer } from "lucide-react";
 import SelectNeo from "../../components/common/SelectNeo";
 import { managementApi } from "../../api/endpoints";
 import { useAuth } from "../../context/AuthContext";
@@ -103,7 +102,8 @@ export default function ApproveBongkarmuat() {
 
   // Muat badge pending count begitu halaman dibuka (tab masih null)
   useEffect(() => {
-    fetchData(null, "", "");
+    const timer = setTimeout(() => fetchData(null, "", ""), 0);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -168,11 +168,6 @@ export default function ApproveBongkarmuat() {
 
   return (
     <div>
-      <PageHeader
-        title="Approve Bongkar Muat"
-        subtitle="Persetujuan dokumen Bon Sementara & LPBS berjenjang (SH → DH → HOD)"
-      />
-
       {/* ===== Tombol Tab Kategori ===== */}
       <div className="glass-card panel" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 12px" }}>Kategori Approve</h3>
@@ -222,12 +217,14 @@ export default function ApproveBongkarmuat() {
       ) : (
         <div className="glass-card panel panel-elevated">
           <div
+            className="approve-content-header"
             style={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "flex-end",
+              alignItems: "flex-start",
               gap: 12,
-              marginBottom: 12,
+              marginBottom: 18,
+              paddingTop: 0,
               flexWrap: "wrap",
             }}
           >
@@ -236,19 +233,27 @@ export default function ApproveBongkarmuat() {
               style={{
                 display: "flex",
                 gap: 10,
-                alignItems: "flex-end",
+                alignItems: "flex-start",
+                marginTop: 2,
                 flexWrap: "wrap",
               }}
             >
-              <div className="field" style={{ minWidth: 160, marginBottom: 0 }}>
+              <div
+                className="field approve-filter-field"
+                style={{ minWidth: 160, marginBottom: 0 }}
+              >
                 <label>Tanggal</label>
                 <input
+                  className="approve-date-filter"
                   type="date"
                   value={searchDate}
                   onChange={handleDateChange}
                 />
               </div>
-              <div className="field" style={{ minWidth: 170, marginBottom: 0 }}>
+              <div
+                className="field approve-filter-field"
+                style={{ minWidth: 170, marginBottom: 0 }}
+              >
                 <label>Status</label>
                 <SelectNeo
                   name="status"
@@ -277,21 +282,27 @@ export default function ApproveBongkarmuat() {
               Tidak ada data <b>{pageTitle}</b> untuk ditampilkan.
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="approve-table-wrap" style={{ overflowX: "auto" }}>
               <table
-                className="table-bordered-neo"
+                className="table-bordered-neo approve-table"
                 style={{ width: "100%", fontSize: 12.5 }}
               >
                 <thead>
                   <tr style={{ textAlign: "center" }}>
-                    <th>NO</th>
-                    <th>Warehouse</th>
-                    <th>Date</th>
-                    <th>No Doc</th>
-                    <th style={{ textAlign: "left" }}>Uraian Kegiatan</th>
-                    <th>Nilai</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
+                    <th className="col-no">NO</th>
+                    <th className="col-warehouse">Warehouse</th>
+                    <th className="col-date">Date</th>
+                    <th className="col-doc">No Doc</th>
+                    <th className="col-print">Print</th>
+                    <th
+                      className="col-description"
+                      style={{ textAlign: "left" }}
+                    >
+                      Uraian
+                    </th>
+                    <th className="col-value">Nilai</th>
+                    <th className="col-status">Status</th>
+                    <th className="col-actions">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -309,55 +320,79 @@ export default function ApproveBongkarmuat() {
 
                     return (
                       <tr key={`${row.tgl}-${row.no_doc}`}>
-                        <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                        <td style={{ textAlign: "center" }}>{row.warehouse}</td>
-                        <td style={{ textAlign: "center" }}>
+                        <td className="col-no" style={{ textAlign: "center" }}>
+                          {idx + 1}
+                        </td>
+                        <td
+                          className="col-warehouse"
+                          style={{ textAlign: "center" }}
+                        >
+                          {row.warehouse}
+                        </td>
+                        <td
+                          className="col-date"
+                          style={{ textAlign: "center" }}
+                        >
                           {formatTgl(row.tgl)}
                         </td>
-                        <td style={{ fontWeight: 600 }}>
-                          {row.no_doc}{" "}
+                        <td className="col-doc" style={{ fontWeight: 600 }}>
+                          {row.no_doc}
+                        </td>
+                        <td
+                          className="col-print"
+                          style={{ textAlign: "center" }}
+                        >
                           <Link
                             to={`/${tab === "lpbs" ? "transaksi-lpbs" : "transaksi-bs"}/${encodeNoDoc(row.no_doc)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             title="Preview / Cetak"
-                            style={{
-                              marginLeft: 4,
-                              display: "inline-flex",
-                              verticalAlign: "middle",
-                            }}
+                            className="approve-print-link"
                           >
                             <Printer size={13} />
                           </Link>
                         </td>
-                        <td style={{ whiteSpace: "pre-line" }}>
+                        <td
+                          className="col-description"
+                          style={{ whiteSpace: "pre-line" }}
+                          title={row.uraian_kegiatan || "-"}
+                        >
                           {row.uraian_kegiatan || "-"}
                         </td>
-                        <td style={{ textAlign: "right" }}>
+                        <td
+                          className="col-value"
+                          style={{ textAlign: "center" }}
+                        >
                           Rp {Number(nilaiTampil || 0).toLocaleString("id-ID")}
                         </td>
-                        <td style={{ textAlign: "center" }}>
+                        <td
+                          className="col-status"
+                          style={{ textAlign: "center" }}
+                        >
                           <StatusBadge status={rowStatus} />
                         </td>
-                        <td style={{ textAlign: "center" }}>
+                        <td
+                          className="col-actions"
+                          style={{ textAlign: "center" }}
+                        >
                           {canAct ? (
                             <div
                               className="row-actions"
                               style={{ justifyContent: "center" }}
                             >
                               <button
-                                className="icon-btn"
+                                className="approve-action approve-action-yes"
                                 title="Approve"
                                 onClick={() => handleAction(row, "approve")}
                               >
-                                <Check size={14} />
+                                Approve
                               </button>
                               <button
-                                className="icon-btn danger"
+                                className="approve-action approve-action-no"
                                 title="Reject"
                                 onClick={() => handleAction(row, "reject")}
                               >
-                                <X size={14} />
+                                Reject
                               </button>
                             </div>
                           ) : (

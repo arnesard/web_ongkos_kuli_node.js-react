@@ -46,23 +46,15 @@ function formatQty(n) {
 
 // Hitung breakdown nilai LPBS on-the-fly dari transaksi asli hari itu (dan H+1,
 // H+2 kalau tgl jatuh hari Jumat — kompensasi weekend, sama kayak balanceCash).
-async function computeLpbsBreakdown(tgl, warehouse) {
+async function computeLpbsBreakdown(tgl, warehouse, shared = {}) {
   const dayOfWeek = new Date(tgl).getDay(); // JS: Minggu=0 ... Jumat=5 (sama posisinya dgn PHP date('N')==5)
   const rangeTgl =
     dayOfWeek === 5 ? [tgl, addDays(tgl, 1), addDays(tgl, 2)] : [tgl];
   const placeholders = rangeTgl.map(() => "?").join(",");
   const isJMW = String(warehouse).toLowerCase() === "jmw";
 
-  const [kendaraanRows] = await pool.query(
-    "SELECT nama_kendaraan, biaya_truk FROM data_kendaraan_tbl",
-  );
-  const biayaTrukArr = {};
-  kendaraanRows.forEach((k) => (biayaTrukArr[k.nama_kendaraan] = k.biaya_truk));
-  const [barangRows] = await pool.query(
-    "SELECT jenis, ongkos FROM data_barang_tbl",
-  );
-  const biayaTrukArrJMW = {};
-  barangRows.forEach((b) => (biayaTrukArrJMW[b.jenis] = b.ongkos));
+  const biayaTrukArr = shared.biayaTrukArr || {};
+  const biayaTrukArrJMW = shared.biayaTrukArrJMW || {};
 
   // 1. Ongkos Bongkar/Muat (unik per tgl+no_trip+jenis_truk)
   const [transaksiTruk] = await pool.query(
@@ -94,11 +86,7 @@ async function computeLpbsBreakdown(tgl, warehouse) {
     : null;
 
   // 2. Uang Makan Kuli
-  const [umRow] = await pool.query(
-    "SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ?",
-    [new Date().getFullYear()],
-  );
-  const hargaUM = umRow[0]?.harga_uang_makan || 0;
+  const hargaUM = shared.hargaUM || 0;
   const [kuliCountRow] = await pool.query(
     `SELECT COUNT(DISTINCT id_kuli) AS cnt FROM data_transaksi_uangmakankuli_tbl WHERE tgl IN (${placeholders}) AND warehouse = ?`,
     [...rangeTgl, warehouse],
@@ -166,6 +154,148 @@ async function computeLpbsBreakdown(tgl, warehouse) {
     total_nilai,
     pembulatan: roundToHundred(total_nilai),
   };
+}
+
+// Ambil seluruh transaksi LPBS dalam batch supaya satu dokumen tidak memicu
+// empat query terpisah. Hasilnya tetap dihitung per tanggal + warehouse.
+async function computeLpbsBreakdownsBatch(rows, shared) {
+  const contexts = new Map();
+  rows.forEach((row) => {
+    const key = `${row.tgl}|${row.warehouse}`;
+    if (!contexts.has(key)) {
+      const day = new Date(row.tgl).getDay();
+      contexts.set(key, {
+        key,
+        tgl: row.tgl,
+        warehouse: row.warehouse,
+        dates:
+          day === 5
+            ? [row.tgl, addDays(row.tgl, 1), addDays(row.tgl, 2)]
+            : [row.tgl],
+      });
+    }
+  });
+  const list = [...contexts.values()];
+  if (!list.length) return new Map();
+
+  const dateWarehousePairs = [
+    ...new Set(
+      list.flatMap((ctx) =>
+        ctx.dates.map((date) => `${date}|${ctx.warehouse}`),
+      ),
+    ),
+  ];
+  const pairMap = new Map();
+  dateWarehousePairs.forEach((pair) =>
+    pairMap.set(
+      pair,
+      list.filter((ctx) =>
+        ctx.dates.some((date) => `${date}|${ctx.warehouse}` === pair),
+      ),
+    ),
+  );
+  const dates = [...new Set(list.flatMap((ctx) => ctx.dates))];
+  const warehouses = [...new Set(list.map((ctx) => ctx.warehouse))];
+  const dateMarks = dates.map(() => "?").join(",");
+  const whMarks = warehouses.map(() => "?").join(",");
+  const [trukRows, umRows, susunRows, pindahRows] = await Promise.all([
+    pool.query(
+      `SELECT tgl, warehouse, no_trip, jenis_truk, qty_truk FROM data_transaksi_tbl WHERE tgl IN (${dateMarks}) AND warehouse IN (${whMarks})`,
+      [...dates, ...warehouses],
+    ),
+    pool.query(
+      `SELECT tgl, warehouse, id_kuli FROM data_transaksi_uangmakankuli_tbl WHERE tgl IN (${dateMarks}) AND warehouse IN (${whMarks})`,
+      [...dates, ...warehouses],
+    ),
+    pool.query(
+      `SELECT tgl, warehouse, jenis_truk, kubikasi, kode_transaksi FROM data_transaksi_susunlantai_tbl WHERE tgl IN (${dateMarks}) AND warehouse IN (${whMarks})`,
+      [...dates, ...warehouses],
+    ),
+    pool.query(
+      `SELECT tgl, warehouse, biaya_retribusi, biaya_security, biaya_parkir, biaya_uangjalan FROM data_transaksi_pemindahanbarang_tbl WHERE tgl IN (${dateMarks}) AND warehouse IN (${whMarks})`,
+      [...dates, ...warehouses],
+    ),
+  ]);
+  const result = new Map();
+  for (const ctx of list) {
+    const matches = (rows) =>
+      rows.filter(
+        (row) => ctx.dates.includes(row.tgl) && row.warehouse === ctx.warehouse,
+      );
+    const biayaMap =
+      String(ctx.warehouse).toLowerCase() === "jmw"
+        ? shared.biayaTrukArrJMW
+        : shared.biayaTrukArr;
+    const seen = new Set();
+    const qtyByType = {};
+    matches(trukRows[0]).forEach((row) => {
+      const key = `${row.tgl}|${row.no_trip}|${row.jenis_truk}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      qtyByType[row.jenis_truk] =
+        (qtyByType[row.jenis_truk] || 0) +
+        Number(String(row.qty_truk || 0).replace(",", "."));
+    });
+    let nilai1 = 0;
+    const trukString = [];
+    Object.entries(qtyByType).forEach(([jenis, qty]) => {
+      const biaya = Number(biayaMap[jenis] || 0);
+      if (qty > 0 && biaya > 0) {
+        nilai1 += qty * biaya;
+        trukString.push(`${formatQty(qty)} ${jenis}`);
+      }
+    });
+    const um = matches(umRows[0]);
+    const nilai2 =
+      new Set(um.map((row) => row.id_kuli)).size * Number(shared.hargaUM || 0);
+    const susun = matches(susunRows[0]);
+    const groupedSusun = new Map();
+    susun.forEach((row) =>
+      groupedSusun.set(`${row.kode_transaksi}|${row.tgl}`, row),
+    );
+    let nilai3 = 0;
+    groupedSusun.forEach((row) => {
+      const biaya = Number(shared.biayaTrukArr[row.jenis_truk] || 0);
+      if (Number(row.kubikasi) > 0 && biaya > 0)
+        nilai3 += Number(row.kubikasi) * biaya;
+    });
+    const pindah = matches(pindahRows[0]);
+    const nilai4 = pindah.reduce(
+      (sum, row) =>
+        sum +
+        Number(row.biaya_retribusi || 0) +
+        Number(row.biaya_security || 0) +
+        Number(row.biaya_parkir || 0) +
+        Number(row.biaya_uangjalan || 0),
+      0,
+    );
+    const total_nilai = nilai1 + nilai2 + nilai3 + nilai4;
+    result.set(ctx.key, {
+      uraian_kegiatan: [
+        trukString.length
+          ? `ONGKOS BONGKAR/MUAT : ${trukString.join(", ")}`
+          : null,
+        nilai2
+          ? `ONGKOS UANG MAKAN KULI : ${new Set(um.map((row) => row.id_kuli)).size} KULI`
+          : null,
+        nilai3
+          ? `ONGKOS SUSUN LANTAI : ${new Set(susun.map((row) => row.kode_transaksi)).size} KEGIATAN`
+          : null,
+        pindah.length
+          ? `ONGKOS PEMINDAHAN BARANG : ${pindah.length} RITASE`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      nilai1,
+      nilai2,
+      nilai3,
+      nilai4,
+      total_nilai,
+      pembulatan: roundToHundred(total_nilai),
+    });
+  }
+  return result;
 }
 
 // Badge angka pending di tombol tab BS/LPBS — samain dgn View::composer di
@@ -285,12 +415,36 @@ async function list(req, res) {
     let groupedData = [];
 
     if (isLpbs) {
+      const [kendaraanRows, barangRows, umRows] = await Promise.all([
+        pool.query("SELECT nama_kendaraan, biaya_truk FROM data_kendaraan_tbl"),
+        pool.query("SELECT jenis, ongkos FROM data_barang_tbl"),
+        pool.query(
+          "SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ? LIMIT 1",
+          [new Date().getFullYear()],
+        ),
+      ]);
+      const biayaTrukArr = Object.fromEntries(
+        kendaraanRows[0].map((item) => [item.nama_kendaraan, item.biaya_truk]),
+      );
+      const biayaTrukArrJMW = Object.fromEntries(
+        barangRows[0].map((item) => [item.jenis, item.ongkos]),
+      );
+      const shared = {
+        biayaTrukArr,
+        biayaTrukArrJMW,
+        hargaUM: Number(umRows[0][0]?.harga_uang_makan || 0),
+      };
       const seenKeys = new Set();
+      const uniqueRows = [];
       for (const row of rows) {
         const key = `${row.tgl}|${row.no_doc}`;
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
-        const breakdown = await computeLpbsBreakdown(row.tgl, row.warehouse);
+        uniqueRows.push(row);
+      }
+      const breakdowns = await computeLpbsBreakdownsBatch(uniqueRows, shared);
+      uniqueRows.forEach((row) => {
+        const breakdown = breakdowns.get(`${row.tgl}|${row.warehouse}`);
         if (breakdown.total_nilai > 0) {
           groupedData.push({
             tgl: row.tgl,
@@ -300,7 +454,7 @@ async function list(req, res) {
             ...breakdown,
           });
         }
-      }
+      });
     } else {
       const map = {};
       rows.forEach((row) => {

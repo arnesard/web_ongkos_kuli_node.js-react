@@ -32,12 +32,13 @@ async function list(req, res) {
     const [data] = await pool.query(sql, params);
 
     // Distinct no_doc list (untuk dropdown pencarian)
-    let noDocSql = `SELECT DISTINCT no_doc FROM ${TABLE} WHERE 1=1`;
+    let noDocSql = `SELECT no_doc, MAX(tgl) AS latest_tgl, MAX(id) AS latest_id FROM ${TABLE} WHERE 1=1`;
     const noDocParams = [];
     if (!isSuperUser) {
       noDocSql += " AND warehouse = ?";
       noDocParams.push(warehouse);
     }
+    noDocSql += " GROUP BY no_doc ORDER BY latest_tgl DESC, latest_id DESC";
     const [noDocRows] = await pool.query(noDocSql, noDocParams);
 
     let dataCari = [];
@@ -79,7 +80,11 @@ async function create(req, res) {
   const { tgl, no_doc, uraian_kegiatan, nilai } = req.body;
 
   if (!tgl || !no_doc || !uraian_kegiatan || !nilai) {
-    return fail(res, "Tanggal, no dokumen, uraian kegiatan, dan nilai wajib diisi.", 422);
+    return fail(
+      res,
+      "Tanggal, no dokumen, uraian kegiatan, dan nilai wajib diisi.",
+      422,
+    );
   }
 
   // Samain dengan mutator DataBonsementara::nilai() -> hapus titik ribuan
@@ -88,7 +93,13 @@ async function create(req, res) {
   try {
     await pool.query(
       `INSERT INTO ${TABLE} (tgl, no_doc, uraian_kegiatan, nilai, warehouse) VALUES (?, ?, ?, ?, ?)`,
-      [tgl, String(no_doc).toUpperCase(), uraian_kegiatan, cleanNilai, String(warehouse).toUpperCase()]
+      [
+        tgl,
+        String(no_doc).toUpperCase(),
+        uraian_kegiatan,
+        cleanNilai,
+        String(warehouse).toUpperCase(),
+      ],
     );
     return ok(res, null, "Data berhasil ditambahkan.", 201);
   } catch (err) {
@@ -103,12 +114,19 @@ async function update(req, res) {
   const { tgl, no_doc, uraian_kegiatan, nilai } = req.body;
 
   if (!tgl || !no_doc || !uraian_kegiatan || !nilai) {
-    return fail(res, "Tanggal, no dokumen, uraian kegiatan, dan nilai wajib diisi.", 422);
+    return fail(
+      res,
+      "Tanggal, no dokumen, uraian kegiatan, dan nilai wajib diisi.",
+      422,
+    );
   }
   const cleanNilai = String(nilai).replace(/\./g, "");
 
   try {
-    const [rows] = await pool.query(`SELECT id, status_bs FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(
+      `SELECT id, status_bs FROM ${TABLE} WHERE id = ?`,
+      [id],
+    );
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
 
     if (rows[0].status_bs) {
@@ -117,7 +135,7 @@ async function update(req, res) {
 
     await pool.query(
       `UPDATE ${TABLE} SET tgl=?, no_doc=?, uraian_kegiatan=?, nilai=? WHERE id=?`,
-      [tgl, String(no_doc).toUpperCase(), uraian_kegiatan, cleanNilai, id]
+      [tgl, String(no_doc).toUpperCase(), uraian_kegiatan, cleanNilai, id],
     );
     return ok(res, null, "Data berhasil diperbarui.");
   } catch (err) {
@@ -130,7 +148,10 @@ async function update(req, res) {
 async function remove(req, res) {
   const { id } = req.params;
   try {
-    const [rows] = await pool.query(`SELECT id, status_bs FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(
+      `SELECT id, status_bs FROM ${TABLE} WHERE id = ?`,
+      [id],
+    );
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
 
     if (rows[0].status_bs) {
@@ -161,7 +182,10 @@ async function inputAktual(req, res) {
   const cleaned = String(act_nilai).replace(/\./g, "");
 
   try {
-    await pool.query(`UPDATE ${TABLE} SET act_nilai = ? WHERE no_doc = ?`, [cleaned, no_doc]);
+    await pool.query(`UPDATE ${TABLE} SET act_nilai = ? WHERE no_doc = ?`, [
+      cleaned,
+      no_doc,
+    ]);
     return ok(res, null, "Nilai aktual berhasil disimpan!");
   } catch (err) {
     console.error("[bonSementara.inputAktual]", err);

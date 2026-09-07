@@ -126,7 +126,7 @@ async function index(req, res) {
 
     // ── NOMINAL & PERSENTASE BON HARI INI ──
     let bonHariIniSql = `SELECT warehouse, SUM(nilai) AS total_nilai, SUM(act_nilai) AS total_aktual
-      FROM data_bonsementara_tbl WHERE DATE(tgl) = ?`;
+      FROM data_bonsementara_tbl WHERE tgl = ?`;
     const bonHariIniParams = [today];
     if (!isHighLevel) {
       bonHariIniSql += " AND warehouse = ?";
@@ -165,7 +165,7 @@ async function index(req, res) {
     });
 
     // ── REKAP BON VS AKTUAL VS TRANSAKSI (grouped per warehouse + tgl, expand Jumat) ──
-    let bonSql = "SELECT * FROM data_bonsementara_tbl WHERE 1=1";
+    let bonSql = "SELECT tgl, warehouse, nilai, act_nilai FROM data_bonsementara_tbl WHERE 1=1";
     const bonParams = [];
     if (activeFilter) {
       bonSql += " AND warehouse = ?";
@@ -196,18 +196,65 @@ async function index(req, res) {
     ]);
     const uangMakanHarianRekap = umRow[0]?.harga_uang_makan || 0;
 
+    const groupedBonEntries = Object.entries(groupedBon);
+    const datesNeeded = [
+      ...new Set(
+        groupedBonEntries.flatMap(([groupKey]) => {
+          const [, date] = groupKey.split("_");
+          return dayOfWeekISO(date) === 5
+            ? [date, addDays(date, 1), addDays(date, 2)]
+            : [date];
+        }),
+      ),
+    ];
+    const batchWarehouseSql = activeFilter ? " AND warehouse = ?" : "";
+    const batchWarehouseParams = activeFilter ? [activeFilter] : [];
+    const [rekapTransaksiResult, rekapUmResult, rekapSusunResult, rekapPindahResult] =
+      await Promise.all([
+        pool.query(
+          `SELECT tgl, warehouse, jenis_truk, ket, no_trip, qty_truk
+           FROM data_transaksi_tbl WHERE tgl IN (?)${batchWarehouseSql}`,
+          [datesNeeded, ...batchWarehouseParams],
+        ),
+        pool.query(
+          `SELECT tgl, warehouse, id_kuli
+           FROM data_transaksi_uangmakankuli_tbl WHERE tgl IN (?)${batchWarehouseSql}`,
+          [datesNeeded, ...batchWarehouseParams],
+        ),
+        pool.query(
+          `SELECT tgl, warehouse, kode_transaksi, kubikasi, jenis_truk
+           FROM data_transaksi_susunlantai_tbl WHERE tgl IN (?)${batchWarehouseSql}`,
+          [datesNeeded, ...batchWarehouseParams],
+        ),
+        pool.query(
+          `SELECT tgl, warehouse, biaya_retribusi, biaya_security, biaya_parkir, biaya_uangjalan
+           FROM data_transaksi_pemindahanbarang_tbl WHERE tgl IN (?)${batchWarehouseSql}`,
+          [datesNeeded, ...batchWarehouseParams],
+        ),
+      ]);
+    const rowsByWarehouseDate = (rows) =>
+      rows.reduce((result, row) => {
+        const key = `${row.warehouse}_${row.tgl}`;
+        (result[key] ||= []).push(row);
+        return result;
+      }, {});
+    const rekapTransaksiByDate = rowsByWarehouseDate(rekapTransaksiResult[0]);
+    const rekapUmByDate = rowsByWarehouseDate(rekapUmResult[0]);
+    const rekapSusunByDate = rowsByWarehouseDate(rekapSusunResult[0]);
+    const rekapPindahByDate = rowsByWarehouseDate(rekapPindahResult[0]);
+
+    // Ambil tiap tabel transaksi sekali per batch. Sebelumnya empat query ini
+    // diulang untuk setiap tanggal bon, sehingga loading dashboard melambat
+    // drastis ketika histori bertambah.
     const rekap = [];
-    for (const key of Object.keys(groupedBon)) {
+    for (const [key, bonGroup] of groupedBonEntries) {
       const [warehouseGroup, tgl] = key.split("_");
-      const bonGroup = groupedBon[key];
       const isJumat = dayOfWeekISO(tgl) === 5;
       const rangeTanggal = isJumat ? [tgl, addDays(tgl, 1), addDays(tgl, 2)] : [tgl];
-      const placeholders = rangeTanggal.map(() => "?").join(",");
       const biayaTrukArr = warehouseGroup === "JMW" ? ongkosBrgAll : biayaTrukAll;
 
-      const [transaksiRows2] = await pool.query(
-        `SELECT jenis_truk, ket, no_trip, qty_truk FROM data_transaksi_tbl WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-        [...rangeTanggal, warehouseGroup]
+      const transaksiRows2 = rangeTanggal.flatMap(
+        (date) => rekapTransaksiByDate[`${warehouseGroup}_${date}`] || [],
       );
       const seen = new Set();
       let nilai1 = 0;
@@ -218,16 +265,15 @@ async function index(req, res) {
         nilai1 += Number(row.qty_truk || 0) * Number(biayaTrukArr[row.jenis_truk] || 0);
       });
 
-      const [umCountRow] = await pool.query(
-        `SELECT COUNT(DISTINCT id_kuli) AS cnt FROM data_transaksi_uangmakankuli_tbl WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-        [...rangeTanggal, warehouseGroup]
+      const kuliIds = new Set(
+        rangeTanggal
+          .flatMap((date) => rekapUmByDate[`${warehouseGroup}_${date}`] || [])
+          .map((row) => row.id_kuli),
       );
-      const nilai2 = (umCountRow[0]?.cnt || 0) * uangMakanHarianRekap;
+      const nilai2 = kuliIds.size * uangMakanHarianRekap;
 
-      const [susunRows2] = await pool.query(
-        `SELECT kode_transaksi, tgl, kubikasi, jenis_truk FROM data_transaksi_susunlantai_tbl
-         WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-        [...rangeTanggal, warehouseGroup]
+      const susunRows2 = rangeTanggal.flatMap(
+        (date) => rekapSusunByDate[`${warehouseGroup}_${date}`] || [],
       );
       let nilai3 = 0;
       Object.values(groupBy(susunRows2, (r) => `${r.kode_transaksi}|${r.tgl}`)).forEach((items) => {
@@ -235,10 +281,8 @@ async function index(req, res) {
         nilai3 += Number(f.kubikasi || 0) * Number(biayaTrukArr[f.jenis_truk] || 0);
       });
 
-      const [pemindahanRows2] = await pool.query(
-        `SELECT biaya_retribusi, biaya_security, biaya_parkir, biaya_uangjalan FROM data_transaksi_pemindahanbarang_tbl
-         WHERE tgl IN (${placeholders}) AND warehouse = ?`,
-        [...rangeTanggal, warehouseGroup]
+      const pemindahanRows2 = rangeTanggal.flatMap(
+        (date) => rekapPindahByDate[`${warehouseGroup}_${date}`] || [],
       );
       let nilai4 = 0;
       pemindahanRows2.forEach((p) => {
@@ -339,7 +383,7 @@ async function index(req, res) {
 
     // ── TRIP PER KULI HARI INI ──
     let tripSql = `SELECT k.nama_kuli, COUNT(DISTINCT t.no_trip) AS total_trip_hari_ini
-      FROM data_transaksi_tbl t JOIN data_kuli_tbl k ON t.id_kuli = k.nik WHERE DATE(t.tgl) = ?`;
+      FROM data_transaksi_tbl t JOIN data_kuli_tbl k ON t.id_kuli = k.nik WHERE t.tgl = ?`;
     const tripParams = [today];
     if (activeFilter) {
       tripSql += " AND t.warehouse = ?";

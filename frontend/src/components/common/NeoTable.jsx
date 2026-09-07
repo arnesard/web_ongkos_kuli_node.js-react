@@ -45,6 +45,8 @@ const customStyles = {
       backgroundColor: "transparent",
       color: "var(--text-secondary)",
       borderTopColor: "var(--glass-border)",
+      borderTopWidth: "1px",
+      borderTopStyle: "solid",
     },
   },
 };
@@ -64,7 +66,11 @@ export default function NeoTable({
     if (!query || searchableKeys.length === 0) return data;
     const q = query.toLowerCase();
     return data.filter((row) =>
-      searchableKeys.some((key) => String(row[key] ?? "").toLowerCase().includes(q))
+      searchableKeys.some((key) =>
+        String(row[key] ?? "")
+          .toLowerCase()
+          .includes(q),
+      ),
     );
   }, [data, query, searchableKeys]);
 

@@ -12,6 +12,8 @@ router.use(verifyToken);
 router.get("/performance-kuli", performance.performanceKuli);
 router.get("/performance-kuli/cetak-nota", performance.cetakNotaKuli);
 router.get("/balance-cash", balanceCash.balanceCash);
+router.get("/balance-cash/resume/:tanggal", balanceCash.balanceCashResume);
+router.get("/balance-cash/detail/:tanggal", balanceCash.balanceCashDetail);
 router.get("/approve-bongkarmuat", approve.list);
 router.post("/approve-bongkarmuat/:no_doc", approve.process);
 router.get("/transaksi-bs/:no_doc_b64", report.bsReport);

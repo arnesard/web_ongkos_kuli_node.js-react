@@ -5,7 +5,10 @@ import CrudPage from "../../components/common/CrudPage";
 import CariAktualModal from "./CariAktualModal";
 import { bonSementaraApi } from "../../api/endpoints";
 
-const swalDark = { customClass: { popup: "neo-swal" }, confirmButtonColor: "#2f7dff" };
+const swalDark = {
+  customClass: { popup: "neo-swal" },
+  confirmButtonColor: "#2f7dff",
+};
 
 // Disamakan dengan data_bonsementara_tbl (tgl, no_doc, uraian_kegiatan, nilai, act_nilai, status_bs, warehouse)
 const columns = [
@@ -23,8 +26,20 @@ const columns = [
     selector: (r) => r.status_bs,
     cell: (r) => {
       const s = r.status_bs || "";
-      const cls = s.includes("reject") ? "danger" : s === "approvebyhod" ? "success" : s ? "warning" : "info";
-      const label = !s ? "Menunggu SH" : s.includes("reject") ? "Ditolak" : s === "approvebyhod" ? "Disetujui" : s;
+      const cls = s.includes("reject")
+        ? "danger"
+        : s === "approvebyhod"
+          ? "success"
+          : s
+            ? "warning"
+            : "info";
+      const label = !s
+        ? "Menunggu SH"
+        : s.includes("reject")
+          ? "Ditolak"
+          : s === "approvebyhod"
+            ? "Disetujui"
+            : s;
       return <span className={`badge-neo ${cls}`}>{label}</span>;
     },
   },
@@ -54,8 +69,18 @@ export default function BonSementara() {
       options: noDocOptions,
       placeholder: "Ketik atau pilih no dokumen...",
     },
-    { name: "uraian_kegiatan", label: "Uraian Kegiatan", type: "textarea", required: true },
-    { name: "nilai", label: "Nilai Bon Sementara (Rp)", type: "number", required: true },
+    {
+      name: "uraian_kegiatan",
+      label: "Uraian Kegiatan",
+      type: "textarea",
+      required: true,
+    },
+    {
+      name: "nilai",
+      label: "Nilai Bon Sementara (Rp)",
+      type: "number",
+      required: true,
+    },
   ];
 
   // Dipakai CariAktualModal buat trigger refresh tabel utama setelah nilai aktual disimpan
@@ -103,8 +128,6 @@ export default function BonSementara() {
       <CrudPage
         key={refreshKey}
         wide
-        title="Permintaan Bon Sementara"
-        subtitle="Entry ongkos reguler — pengajuan & realisasi bon sementara"
         columns={columns}
         fields={fields}
         idKey="id"
@@ -114,13 +137,21 @@ export default function BonSementara() {
         addLabel="Ajukan Bon Sementara"
         renderActions={renderActions}
         headerActions={
-          <button type="button" className="btn-neo primary" onClick={() => setCariOpen(true)}>
+          <button
+            type="button"
+            className="btn-neo primary"
+            onClick={() => setCariOpen(true)}
+          >
             <Search size={16} /> Cari No Dokumen
           </button>
         }
       />
 
-      <CariAktualModal open={cariOpen} onClose={() => setCariOpen(false)} onSaved={handleSaved} />
+      <CariAktualModal
+        open={cariOpen}
+        onClose={() => setCariOpen(false)}
+        onSaved={handleSaved}
+      />
     </>
   );
 }

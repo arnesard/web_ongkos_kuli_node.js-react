@@ -181,7 +181,7 @@ export default function PerformanceKuli() {
         )}
 
         {showFilter && (
-          <form className="search-inline" onSubmit={handleDetailKuli} style={{ marginBottom: 14, flexWrap: "wrap" }}>
+          <form className="search-inline management-filter-row" onSubmit={handleDetailKuli} style={{ marginBottom: 14 }}>
             <div className="field">
               <label>Tgl</label>
               <input type="date" value={startTgl} onChange={(e) => setStartTgl(e.target.value)} />
