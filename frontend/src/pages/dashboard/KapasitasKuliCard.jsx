@@ -2,7 +2,8 @@ import { Bar } from "react-chartjs-2";
 
 function PercentBadge({ hadir, total }) {
   const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
-  const level = pct <= 20 ? "danger" : pct <= 60 ? "warning" : "success";
+  // Threshold disamain dgn Laravel (source of truth): >=90 sukses, >=70 warning, sisanya danger
+  const level = pct >= 90 ? "success" : pct >= 70 ? "warning" : "danger";
   return (
     <div className="unperform-pct">
       <span className={`badge-neo ${level}`}>{pct}%</span>
@@ -47,13 +48,15 @@ export default function KapasitasKuliCard({ labels = [], kuliDatang = [], kuliTi
     },
     scales: {
       x: {
-        stacked: false,
+        // stacked: true samain dgn Laravel (ApexCharts stacked:true) — "Kuli datang"
+        // & "Kuli tidak datang" digambar numpuk, bukan berdampingan.
+        stacked: true,
         ticks: { color: "#5d6d8f", font: { size: 10 } },
         grid: { color: "rgba(90,150,255,0.08)" },
         title: { display: true, text: "Jumlah Kuli", color: "#5d6d8f", font: { size: 10 } },
       },
       y: {
-        stacked: false,
+        stacked: true,
         ticks: { color: "#93a5c9", font: { size: 10 } },
         grid: { display: false },
       },

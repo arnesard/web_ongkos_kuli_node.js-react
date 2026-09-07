@@ -74,7 +74,14 @@ function calcUsia(statusValue) {
 
 // GET /api/dashboard?warehouse=&bulan=
 async function index(req, res) {
-  const { warehouse: sessionWH, isSuperUser, isHOD, isHighLevel } = warehouseScope(req.user);
+  const { warehouse: sessionWH, isSuperUser, isHOD } = warehouseScope(req.user);
+  // Khusus dashboard, Laravel (DashboardController::resolveWarehouseFilter) juga
+  // mengecek field `level` user, bukan cuma `warehouse` — beda dari controller
+  // Laravel lain (Management/Ongkos) yang cuma cek `warehouse`. Disamain di sini
+  // supaya user dgn level HOD/Superuser tetap dianggap high-level walau field
+  // `warehouse`-nya berisi kode gudang biasa.
+  const userLevel = req.user?.level || "";
+  const isHighLevel = ["HOD", "Superuser"].includes(userLevel) || isSuperUser || isHOD;
   const selectedWH = req.query.warehouse;
   const activeFilter = !isHighLevel ? sessionWH : selectedWH && selectedWH !== "all" ? selectedWH : null;
 
@@ -376,10 +383,18 @@ async function index(req, res) {
       };
     });
 
-    // ── KATEGORISASI USIA (dari kolom `status` yang dipakai sbg tgl lahir) ──
-    const kuliUsiaDibawah35 = dataKuli.filter((k) => k.usia !== null && k.usia <= 34);
-    const kuliUsiaProduktif = dataKuli.filter((k) => k.usia !== null && k.usia >= 35 && k.usia <= 49);
-    const kuliUsiaSenior = dataKuli.filter((k) => k.usia !== null && k.usia >= 50);
+    // ── KATEGORISASI USIA (samain dgn Laravel blade component, source of truth:
+    // muda <=35, produktif 36-49, senior >=50, diurutkan usia DESC/tertua dulu) ──
+    const byUsiaDesc = (a, b) => (b.usia || 0) - (a.usia || 0);
+    const kuliUsiaDibawah35 = dataKuli
+      .filter((k) => k.usia !== null && k.usia <= 35)
+      .sort(byUsiaDesc);
+    const kuliUsiaProduktif = dataKuli
+      .filter((k) => k.usia !== null && k.usia >= 36 && k.usia <= 49)
+      .sort(byUsiaDesc);
+    const kuliUsiaSenior = dataKuli
+      .filter((k) => k.usia !== null && k.usia >= 50)
+      .sort(byUsiaDesc);
 
     // ── TRIP PER KULI HARI INI ──
     let tripSql = `SELECT k.nama_kuli, COUNT(DISTINCT t.no_trip) AS total_trip_hari_ini
@@ -406,7 +421,9 @@ async function index(req, res) {
       persentaseHariIni,
       sparklineData,
       daysInMonth,
-      dataKuliUnperform: [...dataKuli].sort((a, b) => a.percentage - b.percentage).slice(0, 10),
+      // Tidak dibatasi 10 — samain dgn Laravel (source of truth) yg mengirim
+      // SEMUA kuli terurut ascending percentage; pembatasan tampilan cukup lewat scroll di frontend.
+      dataKuliUnperform: [...dataKuli].sort((a, b) => a.percentage - b.percentage),
       kuliUsiaDibawah35,
       kuliUsiaProduktif,
       kuliUsiaSenior,

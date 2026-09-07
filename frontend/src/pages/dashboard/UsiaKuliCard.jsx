@@ -2,8 +2,8 @@ import { useState } from "react";
 
 export default function UsiaKuliCard({ muda = [], produktif = [], senior = [] }) {
   const groups = [
-    { key: "muda", label: "<= 34 Tahun", data: muda },
-    { key: "produktif", label: "35 - 49 Tahun", data: produktif },
+    { key: "muda", label: "<= 35 Tahun", data: muda },
+    { key: "produktif", label: "36 - 49 Tahun", data: produktif },
     { key: "senior", label: ">= 50 Tahun", data: senior },
   ];
   const [active, setActive] = useState("muda");

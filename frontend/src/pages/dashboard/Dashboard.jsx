@@ -9,26 +9,40 @@ import UsiaKuliCard from "./UsiaKuliCard";
 import BonSementaraCard from "./BonSementaraCard";
 import WarehouseSparkCard from "./WarehouseSparkCard";
 
+// Samain dengan daftar warehouse di blade Laravel (welcome-dashboard-tabel.blade.php)
+const WAREHOUSE_OPTIONS = ["APW", "BPW", "DPW", "RPW", "JMW"];
+
 function toMillion(v) {
   return Math.round((Number(v) || 0) / 1000) / 1000; // Rp -> Juta, 3 desimal
 }
 
+// Samain dengan DashboardController::resolveWarehouseFilter (Laravel):
+// isHighLevel = level user HOD/Superuser ATAU field warehouse-nya HOD/Super_User.
+function isHighLevelUser(user) {
+  const level = user?.level || "";
+  const warehouse = user?.warehouse || "";
+  return ["HOD", "Superuser"].includes(level) || ["Super_User", "HOD"].includes(warehouse);
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const isHighLevel = isHighLevelUser(user);
   const [loading, setLoading] = useState(true);
   const [dash, setDash] = useState(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null); // null = semua (all)
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
     dashboardApi
-      .index()
+      .index(isHighLevel && selectedWarehouse ? { warehouse: selectedWarehouse } : undefined)
       .then((data) => mounted && setDash(data))
       .catch((err) => console.error("[Dashboard] gagal memuat data:", err))
       .finally(() => mounted && setLoading(false));
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [selectedWarehouse, isHighLevel]);
 
   if (loading) {
     return (
@@ -91,6 +105,27 @@ export default function Dashboard() {
         title={`Selamat datang, ${user?.nama || "User"}`}
         subtitle="Ringkasan aktivitas operasional ongkos kuli hari ini"
       />
+
+      {isHighLevel && (
+        <div className="dash-warehouse-filter">
+          <h2>DASHBOARD WAREHOUSE - {selectedWarehouse || "ALL"}</h2>
+          <div className="dash-warehouse-filter-buttons">
+            {WAREHOUSE_OPTIONS.map((wh) => (
+              <button
+                key={wh}
+                type="button"
+                className={`btn-neo sm${selectedWarehouse === wh ? " primary" : " ghost"}`}
+                onClick={() => setSelectedWarehouse(wh)}
+              >
+                {wh}
+              </button>
+            ))}
+            <button type="button" className="btn-neo sm danger" onClick={() => setSelectedWarehouse(null)}>
+              Reset Filter
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="dash-grid">
         <div className="dash-col-left">

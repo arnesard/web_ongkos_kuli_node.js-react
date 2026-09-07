@@ -1093,6 +1093,28 @@
 }
 
 /* ===== Dashboard Layout ===== */
+/* Filter warehouse (khusus HOD/Superuser) — mirip bar filter di Laravel blade */
+.dash-warehouse-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.dash-warehouse-filter h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.dash-warehouse-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .dash-grid {
   display: grid;
   grid-template-columns: 320px 1fr;
