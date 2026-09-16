@@ -170,7 +170,7 @@ export default function ApproveBongkarmuat() {
     <div>
       {/* ===== Tombol Tab Kategori ===== */}
       <div className="glass-card panel" style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: "0 0 12px" }}>Kategori Approve</h3>
+        <h4 style={{ margin: "0 0 12px" }}>Kategori Approve</h4>
         <div style={{ display: "flex", gap: 10 }}>
           <button
             type="button"
@@ -252,7 +252,7 @@ export default function ApproveBongkarmuat() {
               </div>
               <div
                 className="field approve-filter-field"
-                style={{ minWidth: 170, marginBottom: 0 }}
+                style={{ minWidth: 160, marginBottom: 0 }}
               >
                 <label>Status</label>
                 <SelectNeo

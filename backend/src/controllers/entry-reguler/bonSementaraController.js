@@ -168,11 +168,15 @@ async function remove(req, res) {
 
 // POST /api/entry-reguler/bon-sementara/input-aktual
 // Samain dengan OngkosController::inputAktual
-// Murni role-based: SuperUser selalu boleh isi (approved atau belum), level lain (termasuk admin) sama sekali tidak boleh
+// Role-based: SuperUser & Admin boleh isi (approved atau belum), level lain sama sekali tidak boleh
 async function inputAktual(req, res) {
   const level = String(req.user?.level || "").toLowerCase();
-  if (level !== "superuser") {
-    return fail(res, "Hanya SuperUser yang boleh mengisi nilai aktual.", 403);
+  if (level !== "superuser" && level !== "admin") {
+    return fail(
+      res,
+      "Hanya SuperUser/Admin yang boleh mengisi nilai aktual.",
+      403,
+    );
   }
 
   const { no_doc, act_nilai } = req.body;

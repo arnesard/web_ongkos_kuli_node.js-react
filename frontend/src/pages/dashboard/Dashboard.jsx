@@ -137,32 +137,38 @@ export default function Dashboard() {
   const showTotalCard =
     isHighLevel && !selectedWarehouse && warehouseSpark.length > 1;
 
+  const warehouseFilterButtons = isHighLevel && (
+    <div className="dash-warehouse-filter-buttons">
+      {WAREHOUSE_OPTIONS.map((wh) => (
+        <button
+          key={wh}
+          type="button"
+          className={`btn-neo sm${selectedWarehouse === wh ? " primary" : " ghost"}`}
+          onClick={() => setSelectedWarehouse(wh)}
+        >
+          {wh}
+        </button>
+      ))}
+      <button
+        type="button"
+        className="btn-neo sm danger"
+        onClick={() => setSelectedWarehouse(null)}
+      >
+        Reset Filter
+      </button>
+    </div>
+  );
+
   return (
     <div className="dashboard-page">
-      <PageHeader title={`Selamat datang, ${user?.nama || "User"}`} />
+      <PageHeader
+        title={`Selamat datang, ${user?.nama || "User"}`}
+        actions={warehouseFilterButtons}
+      />
 
       {isHighLevel && (
         <div className="dash-warehouse-filter">
           <h2>DASHBOARD WAREHOUSE - {selectedWarehouse || "ALL"}</h2>
-          <div className="dash-warehouse-filter-buttons">
-            {WAREHOUSE_OPTIONS.map((wh) => (
-              <button
-                key={wh}
-                type="button"
-                className={`btn-neo sm${selectedWarehouse === wh ? " primary" : " ghost"}`}
-                onClick={() => setSelectedWarehouse(wh)}
-              >
-                {wh}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="btn-neo sm danger"
-              onClick={() => setSelectedWarehouse(null)}
-            >
-              Reset Filter
-            </button>
-          </div>
         </div>
       )}
 
@@ -205,16 +211,16 @@ export default function Dashboard() {
               <SkemaPembayaranCard data={skemaPembayaran} />
             </div>
             <div className="dash-mid-col-8">
-              <UsiaKuliCard
-                muda={mapUsia(dash.kuliUsiaDibawah35)}
-                produktif={mapUsia(dash.kuliUsiaProduktif)}
-                senior={mapUsia(dash.kuliUsiaSenior)}
-              />
               <BonSementaraCard
                 labels={rekapLabels}
                 totalTransaksi={rekapTotalTransaksi}
                 uangBon={rekapUangBon}
                 selisih={rekapSelisih}
+              />
+              <UsiaKuliCard
+                muda={mapUsia(dash.kuliUsiaDibawah35)}
+                produktif={mapUsia(dash.kuliUsiaProduktif)}
+                senior={mapUsia(dash.kuliUsiaSenior)}
               />
             </div>
           </div>

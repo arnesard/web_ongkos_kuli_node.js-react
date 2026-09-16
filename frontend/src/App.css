@@ -944,8 +944,22 @@
   font: inherit;
   line-height: 18px;
 }
+/* Tabel Approve Bongkarmuat di-"freeze": header (thead) nempel/sticky di atas,
+   dan cuma isi tabel (tbody) yang discroll — bukan seluruh tabel + header ikutan
+   kegulung ke atas. Wrapper dikasih tinggi maksimal + scroll vertikal, terus
+   header-nya di-`position: sticky` biar nempel pas di-scroll. */
 .approve-table-wrap {
   margin-top: 8px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.approve-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  /* background solid (bukan transparan kayak default .table-bordered-neo thead th)
+     biar baris tabel yg discroll ke atas gak "keliatan numpuk" di bawah header */
+  background: #101a33;
 }
 .approve-content-header {
   margin-top: -4px;
@@ -1164,6 +1178,14 @@
   height: 100%;
   min-height: 0;
 }
+/* Kolom kanan dikasih overflow-y:auto sebagai jaring pengaman: kalau isinya
+   (spark row + skema pembayaran + usia kuli + chart bon sementara) ternyata
+   lebih tinggi dari layar user (layar kecil/browser di-zoom), kolom ini yang
+   scroll duluan — daripada chart-nya dipaksa nyusut sampai kegencet/numpuk
+   kayak sebelumnya. */
+.dash-col-right {
+  overflow-y: auto;
+}
 .dash-col-left > .dash-card-tall {
   flex: 1;
   min-height: 0;
@@ -1211,20 +1233,27 @@
 }
 .spark-row-compact .spark-card {
   flex: 1 1 0;
-  min-width: 130px;
-  padding: 10px 10px 22px;
+  min-width: 100px;
+  padding: 7px 8px 14px;
 }
 .spark-row-compact .spark-card-title {
-  font-size: 9.5px;
+  font-size: 8.5px;
+  margin-bottom: 4px;
 }
 .spark-row-compact .spark-card-value {
-  font-size: 14px;
+  font-size: 12px;
 }
 .spark-row-compact.spark-row .spark-card-total .spark-card-value {
-  font-size: 18px;
+  font-size: 15px;
 }
 .spark-row-compact .spark-card-chart {
-  height: 26px;
+  height: 18px;
+  margin-top: 3px;
+}
+.spark-row-compact .spark-card-pct {
+  font-size: 10px;
+  bottom: 4px;
+  right: 7px;
 }
 .spark-card {
   position: relative;
@@ -1321,10 +1350,24 @@
   flex: 1;
   min-height: 0;
 }
-/* Bon Sementara Vs Aktual — dibikin gak ikut ngestretch penuh sisa tinggi kolom */
-.dash-card-bon-sementara {
-  flex: 0 1 260px;
-  max-height: 260px;
+/* Bon Sementara Vs Aktual — dibikin gak ikut ngestretch penuh sisa tinggi kolom,
+   TAPI dikasih min-height tegas biar kartu ini gak bisa digencet lebih kecil
+   dari itu di layar/browser yg lebih pendek. Diperbesar lagi atas permintaan
+   (300 -> 380) dan Usia Kuli di sebelahnya diperkecil lagi (lihat
+   .usia-scroll) biar kartu ini dapet ruang jauh lebih lega. Kalau kolom
+   kanan kekurangan tinggi, .dash-col-right yg scroll, bukan chart ini yg
+   gencet.
+   PENTING: selector-nya digabung jadi `.dash-mid-col-8 > .dash-card-fill.dash-card-bon-sementara`
+   biar spesifisitasnya LEBIH TINGGI dari rule `.dash-mid-col-8 > .dash-card-fill`
+   di atas — sebelumnya cuma `.dash-card-bon-sementara` (1 class) vs
+   `.dash-mid-col-8 > .dash-card-fill` (2 class), jadi `flex:1; min-height:0`
+   dari rule di atas SELALU MENANG dan bikin semua angka di sini ketimpa
+   percuma, gak peduli diganti berapa kali. Ini akar masalah kenapa
+   ukurannya "gak jadi-jadi" dari tadi. */
+.dash-mid-col-8 > .dash-card-fill.dash-card-bon-sementara {
+  flex: 0 1 380px;
+  min-height: 300px;
+  max-height: 380px;
 }
 
 /* Kuli Unperform / Usia Kuli scrollable table */
@@ -1334,8 +1377,11 @@
   max-height: 260px; /* batas tegas biar scroll pasti kepicu, gak ngikutin tinggi konten */
   overflow-y: auto;
 }
+/* Usia Kuli diperkecil lagi atas permintaan (110 -> 70px) biar Bon Sementara
+   Vs Aktual di bawahnya (lihat .dash-card-bon-sementara) dapet ruang jauh
+   lebih besar. Tabelnya tetep scrollable kalau datanya lebih dari ~2 baris. */
 .usia-scroll {
-  max-height: 150px;
+  max-height: 70px;
 }
 .unperform-table {
   width: 100%;
@@ -1374,18 +1420,24 @@
 }
 .unperform-pct-sub {
   font-size: 10px;
+  font-weight: 700;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* Skema Pembayaran Kuli — list scrollable, samain gaya pill hijau Laravel */
 .skema-scroll {
   flex: 1;
   min-height: 0;
-  max-height: 400px;
+  max-height: 550px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.skema-card {
+  min-height: 600px;
 }
 .skema-row {
   display: flex;

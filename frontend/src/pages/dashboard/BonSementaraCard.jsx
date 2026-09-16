@@ -10,7 +10,15 @@ import {
   Legend,
 } from "chart.js";
 
-ChartJS.register(LineElement, PointElement, BarElement, LinearScale, CategoryScale, Tooltip, Legend);
+ChartJS.register(
+  LineElement,
+  PointElement,
+  BarElement,
+  LinearScale,
+  CategoryScale,
+  Tooltip,
+  Legend,
+);
 
 function formatJt(v) {
   const sign = v < 0 ? "-" : "";
@@ -19,30 +27,63 @@ function formatJt(v) {
 
 // Plugin manual (tanpa nambah dependency) buat nampilin label angka di atas/bawah
 // titik data — samain gaya Laravel yg pakai chartjs-plugin-datalabels.
+//
+// PENYEBAB LABEL NUMPUK: nilai "Total Uang Transaksi" (bar) dan "Uang Dari
+// Cashier" (garis ungu) di tiap tanggal biasanya deket banget/nyaris sama,
+// jadi kalau ketiga dataset (bar + garis ungu + garis selisih) sama-sama
+// dikasih label angka, ruang vertikalnya gak pernah cukup di kartu compact
+// kayak gini — mau digeser berapa px juga bakal ketemu lagi/numpuk.
+//
+// FIX: garis "Uang Dari Cashier" gak usah dikasih label angka lagi (nilainya
+// masih kebaca lewat tooltip pas hover, dan warnanya ada di legend) — cuma
+// bar (Total Uang Transaksi) & garis Selisih yang dikasih label, itu pun tiap
+// label dikasih "chip" background gelap di belakangnya biar tetep kebaca
+// walau posisinya deket sama garis/gridline lain.
+const LABELED_DATASETS = new Set([
+  "Total Uang Transaksi",
+  "Selisih (Cashier - Aktual)",
+]);
+const LABEL_OFFSET = {
+  "Total Uang Transaksi": () => -10,
+  "Selisih (Cashier - Aktual)": (value) => (value < 0 ? 16 : -10),
+};
+
 const valueLabelsPlugin = {
   id: "valueLabels",
   afterDatasetsDraw(chart) {
     const { ctx } = chart;
-    chart.data.datasets.forEach((ds, datasetIndex) => {
-      const meta = chart.getDatasetMeta(datasetIndex);
+    chart.data.datasets.forEach((ds) => {
+      if (!LABELED_DATASETS.has(ds.label)) return;
+      const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(ds));
       if (meta.hidden) return;
       ctx.save();
       ctx.font = "10px sans-serif";
       ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const getOffset = LABEL_OFFSET[ds.label] || (() => -8);
       meta.data.forEach((el, i) => {
         const value = ds.data[i];
         if (value === undefined || value === null) return;
+        const text = formatJt(value);
+        const y = el.y + getOffset(value);
+        const w = ctx.measureText(text).width;
+        // chip background biar kontras & kebaca walau numpuk sama gridline/titik lain
+        ctx.fillStyle = "rgba(10, 16, 32, 0.72)";
+        ctx.fillRect(el.x - w / 2 - 4, y - 7, w + 8, 14);
         ctx.fillStyle = ds.borderColor || ds.backgroundColor;
-        const isBar = ds.type === "bar";
-        const y = isBar ? el.y - 6 : el.y + (value < 0 ? 14 : -8);
-        ctx.fillText(formatJt(value), el.x, y);
+        ctx.fillText(text, el.x, y);
       });
       ctx.restore();
     });
   },
 };
 
-export default function BonSementaraCard({ labels = [], totalTransaksi = [], uangBon = [], selisih = [] }) {
+export default function BonSementaraCard({
+  labels = [],
+  totalTransaksi = [],
+  uangBon = [],
+  selisih = [],
+}) {
   const data = {
     labels,
     datasets: [
@@ -82,9 +123,14 @@ export default function BonSementaraCard({ labels = [], totalTransaksi = [], uan
   const options = {
     responsive: true,
     maintainAspectRatio: false,
-    layout: { padding: { top: 22, bottom: 18 } },
+    // Sekarang cuma 2 dataset yg punya label (bar + selisih), jadi padding
+    // gak perlu se-ekstrem sebelumnya — 26/24 udah cukup buat chip label + legend.
+    layout: { padding: { top: 26, bottom: 24 } },
     plugins: {
-      legend: { position: "bottom", labels: { color: "#93a5c9", boxWidth: 12, font: { size: 11 } } },
+      legend: {
+        position: "bottom",
+        labels: { color: "#93a5c9", boxWidth: 12, font: { size: 11 } },
+      },
       tooltip: { mode: "index", intersect: false },
     },
     scales: {
@@ -108,9 +154,14 @@ export default function BonSementaraCard({ labels = [], totalTransaksi = [], uan
       <div className="panel-title">
         <h3>Bon Sementara Vs Aktual</h3>
       </div>
-      <div style={{ flex: 1, minHeight: 160 }}>
+      <div style={{ flex: 1, minHeight: 220 }}>
         {labels.length > 0 ? (
-          <Chart type="bar" data={data} options={options} plugins={[valueLabelsPlugin]} />
+          <Chart
+            type="bar"
+            data={data}
+            options={options}
+            plugins={[valueLabelsPlugin]}
+          />
         ) : (
           <div className="empty-state">Belum ada data bon sementara</div>
         )}

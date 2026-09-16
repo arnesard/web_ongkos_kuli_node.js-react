@@ -7,7 +7,8 @@ function formatRupiahShort(nominal) {
 
 export default function SkemaPembayaranCard({ data = [] }) {
   return (
-    <div className="glass-card panel dash-card-fill">
+    <div className="glass-card panel dash-card-fill skema-card">
+      {" "}
       <div className="panel-title">
         <h3>Skema Pembayaran Kuli</h3>
       </div>
@@ -21,7 +22,9 @@ export default function SkemaPembayaranCard({ data = [] }) {
               <span className="skema-sep">||</span>
               <span className="skema-trip">{row.total_trip} TRIP</span>
               <span className="skema-sep">||</span>
-              <span className="skema-nominal">{formatRupiahShort(row.nominal)}</span>
+              <span className="skema-nominal">
+                {formatRupiahShort(row.nominal)}
+              </span>
             </div>
           ))
         ) : (

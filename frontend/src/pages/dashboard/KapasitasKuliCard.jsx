@@ -14,7 +14,12 @@ function PercentBadge({ hadir, total }) {
   );
 }
 
-export default function KapasitasKuliCard({ labels = [], kuliDatang = [], kuliTidakDatang = [], unperformData = [] }) {
+export default function KapasitasKuliCard({
+  labels = [],
+  kuliDatang = [],
+  kuliTidakDatang = [],
+  unperformData = [],
+}) {
   const kapasitasChartData = {
     labels,
     datasets: [
@@ -53,7 +58,12 @@ export default function KapasitasKuliCard({ labels = [], kuliDatang = [], kuliTi
         stacked: true,
         ticks: { color: "#5d6d8f", font: { size: 10 } },
         grid: { color: "rgba(90,150,255,0.08)" },
-        title: { display: true, text: "Jumlah Kuli", color: "#5d6d8f", font: { size: 10 } },
+        title: {
+          display: true,
+          text: "Jumlah Kuli",
+          color: "#5d6d8f",
+          font: { size: 10 },
+        },
       },
       y: {
         stacked: true,
@@ -99,7 +109,9 @@ export default function KapasitasKuliCard({ labels = [], kuliDatang = [], kuliTi
               </tbody>
             </table>
           ) : (
-            <div className="empty-state">Belum ada data performa kuli bulan ini</div>
+            <div className="empty-state">
+              Belum ada data performa kuli bulan ini
+            </div>
           )}
         </div>
       </div>
