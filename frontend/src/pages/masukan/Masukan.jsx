@@ -2,21 +2,37 @@ import { useState } from "react";
 import Swal from "sweetalert2";
 import { Send } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
+import { masukanApi } from "../../api/endpoints";
 
 export default function Masukan() {
   const [form, setForm] = useState({ subjek: "", pesan: "" });
+  const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO (fase backend): POST /api/masukan
-    Swal.fire({
-      customClass: { popup: "neo-swal" },
-      icon: "success",
-      title: "Masukan terkirim",
-      text: "Terima kasih atas masukan Anda.",
-      confirmButtonColor: "#2f7dff",
-    });
-    setForm({ subjek: "", pesan: "" });
+    setSending(true);
+    try {
+      await masukanApi.create(form);
+      Swal.fire({
+        customClass: { popup: "neo-swal" },
+        icon: "success",
+        title: "Masukan terkirim",
+        text: "Terima kasih atas masukan Anda.",
+        confirmButtonColor: "#2f7dff",
+      });
+      setForm({ subjek: "", pesan: "" });
+    } catch (err) {
+      console.error("[Masukan.handleSubmit]", err);
+      Swal.fire({
+        customClass: { popup: "neo-swal" },
+        icon: "error",
+        title: "Gagal mengirim",
+        text: err.response?.data?.message || "Terjadi kesalahan saat mengirim masukan.",
+        confirmButtonColor: "#2f7dff",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -53,9 +69,9 @@ export default function Masukan() {
               required
             />
           </div>
-          <button type="submit" className="btn-neo primary">
+          <button type="submit" className="btn-neo primary" disabled={sending}>
             <Send size={16} />
-            Kirim Masukan
+            {sending ? "Mengirim..." : "Kirim Masukan"}
           </button>
         </form>
       </div>

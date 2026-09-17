@@ -154,3 +154,10 @@ export const lookupApi = {
   getTripData: async (params) =>
     (await api.get("/helpers/get-trip-data", { params })).data.data,
 };
+
+// ==== Masukan ====
+export const masukanApi = {
+  create: async (payload) => (await api.post("/masukan", payload)).data,
+  list: async () => (await api.get("/masukan")).data.data,
+  remove: async (id) => (await api.delete(`/masukan/${id}`)).data,
+};

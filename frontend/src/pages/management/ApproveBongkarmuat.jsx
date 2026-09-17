@@ -174,7 +174,7 @@ export default function ApproveBongkarmuat() {
       if (!res.isConfirmed) return;
       try {
         await managementApi.approveProcess(row.no_doc, action, tab);
-        await fetchData();
+        await fetchData(tab, status, searchDate); // <-- diperbaiki
         Swal.fire({
           ...swalDark,
           icon: "success",

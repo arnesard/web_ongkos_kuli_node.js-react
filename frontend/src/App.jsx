@@ -29,6 +29,7 @@ import DataUser from "./pages/master/DataUser";
 
 import Bantuan from "./pages/bantuan/Bantuan";
 import Masukan from "./pages/masukan/Masukan";
+import DaftarMasukan from "./pages/masukan/DaftarMasukan";
 
 function App() {
   return (
@@ -77,6 +78,7 @@ function App() {
             {/* Bantuan & Masukan */}
             <Route path="/bantuan" element={<Bantuan />} />
             <Route path="/masukan" element={<Masukan />} />
+            <Route path="/daftar-masukan" element={<DaftarMasukan />} />
           </Route>
 
           {/* Fallback */}

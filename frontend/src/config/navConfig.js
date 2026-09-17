@@ -124,6 +124,13 @@ export const navConfig = [
     children: [
       { key: "bantuan", label: "Bantuan", path: "/bantuan" },
       { key: "masukan", label: "Masukan", path: "/masukan" },
+      {
+        key: "daftar-masukan",
+        label: "Daftar Masukan",
+        path: "/daftar-masukan",
+        // Cuma SuperUser, HOD, dan DH yang boleh lihat masukan dari semua user
+        hideForRoles: ["SH", "Admin"],
+      },
     ],
   },
 ];
