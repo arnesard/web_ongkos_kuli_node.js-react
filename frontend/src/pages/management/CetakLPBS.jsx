@@ -17,15 +17,45 @@ function formatTglPanjang(tgl) {
   if (!tgl) return "";
   const d = new Date(tgl);
   if (Number.isNaN(d.getTime())) return tgl;
-  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function rupiah(v) {
-  return `Rp ${Number(v || 0).toLocaleString("id-ID")}`;
+  return `Rp ${Math.round(Number(v || 0)).toLocaleString("id-ID")}`;
 }
 
-function ttdSrc(nama) {
-  return `/img/ttd/${nama}.png`;
+function formatTglJam(dt) {
+  if (!dt) return "";
+  const d = new Date(dt);
+  if (Number.isNaN(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+}
+
+function StampBlock({ nama, waktu }) {
+  if (!nama) return null;
+  return (
+    <div style={{ display: "inline-block", textAlign: "center" }}>
+      <img
+        className="ttd"
+        src="/img/approved-stamp.png"
+        alt="APPROVED"
+        style={{ height: 70, width: 70 }}
+      />
+      <div>({nama})</div>
+      {waktu && (
+        <div style={{ fontSize: 10, color: "#333" }}>{formatTglJam(waktu)}</div>
+      )}
+    </div>
+  );
 }
 
 export default function CetakLPBS() {
@@ -43,7 +73,8 @@ export default function CetakLPBS() {
         if (alive) setData(res);
       })
       .catch((err) => {
-        if (alive) setError(err.response?.data?.message || "Data tidak ditemukan.");
+        if (alive)
+          setError(err.response?.data?.message || "Data tidak ditemukan.");
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -55,16 +86,39 @@ export default function CetakLPBS() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 60 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          padding: 60,
+        }}
+      >
         <Loader2 size={18} className="spin" /> Memuat data...
       </div>
     );
   }
   if (error || !data) {
-    return <div style={{ padding: 40, textAlign: "center", color: "#c00" }}>{error || "Data tidak ditemukan."}</div>;
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "#c00" }}>
+        {error || "Data tidak ditemukan."}
+      </div>
+    );
   }
 
-  const { datas, shUser, no_doc, tanggal, status, act_nilai, pembulatan } = data;
+  const {
+    datas,
+    shUser,
+    no_doc,
+    tanggal,
+    status,
+    act_nilai,
+    pembulatan,
+    approved_sh_lpbs_at,
+    approved_dh_lpbs_at,
+    approved_hod_lpbs_at,
+  } = data;
   const totalRaw = datas.reduce((sum, d) => sum + Number(d.nilai || 0), 0);
   const dummyRowCount = Math.max(0, 7 - datas.length);
   const dummyStart = datas.length + 1;
@@ -84,7 +138,15 @@ export default function CetakLPBS() {
         }
       `}</style>
 
-      <div className="no-print" style={{ display: "flex", gap: 8, justifyContent: "flex-end", padding: "10px 16px" }}>
+      <div
+        className="no-print"
+        style={{
+          display: "flex",
+          gap: 8,
+          justifyContent: "flex-end",
+          padding: "10px 16px",
+        }}
+      >
         <Link to="/approve-bongkarmuat?tab=lpbs" className="btn-neo ghost sm">
           ← Kembali
         </Link>
@@ -94,9 +156,10 @@ export default function CetakLPBS() {
       </div>
 
       <div
+        className="cetak-box"
         style={{
           maxWidth: 800,
-          margin: "0 auto 30px",
+          margin: "0 auto 6px",
           background: "#fff",
           color: "#000",
           border: "3px solid black",
@@ -105,45 +168,109 @@ export default function CetakLPBS() {
           fontSize: 12,
         }}
       >
-        <p style={{ textAlign: "center", marginBottom: 25, marginTop: 0, textDecoration: "underline" }}>
+        <p
+          style={{
+            textAlign: "center",
+            marginBottom: 25,
+            marginTop: 0,
+            textDecoration: "underline",
+          }}
+        >
           <b>LAPORAN PENYELESAIAN BON SEMENTARA</b>
         </p>
 
-        <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse", marginBottom: 0 }}>
+        <table
+          style={{
+            width: "100%",
+            textAlign: "left",
+            borderCollapse: "collapse",
+            marginBottom: 0,
+          }}
+        >
           <tbody>
             <tr>
               <td style={{ width: "20%", padding: "2px 0" }}>1. Tanggal</td>
               <td style={{ width: "80%" }}>
-                <span style={{ display: "block", width: "100%", borderBottom: "1px solid black" }}>: {formatTglPanjang(tanggal)}</span>
+                <span
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    borderBottom: "1px solid black",
+                  }}
+                >
+                  : {formatTglPanjang(tanggal)}
+                </span>
               </td>
             </tr>
             <tr>
-              <td style={{ width: "20%", padding: "2px 0" }}>2. Nomor Bon Sementara</td>
+              <td style={{ width: "20%", padding: "2px 0" }}>
+                2. Nomor Bon Sementara
+              </td>
               <td style={{ width: "80%" }}>
-                <span style={{ display: "block", width: "100%", borderBottom: "1px solid black" }}>: {no_doc}</span>
+                <span
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    borderBottom: "1px solid black",
+                  }}
+                >
+                  : {no_doc}
+                </span>
               </td>
             </tr>
             <tr>
-              <td style={{ width: "20%", padding: "2px 0" }}>3. Rincian Pengeluaran</td>
+              <td style={{ width: "20%", padding: "2px 0" }}>
+                3. Rincian Pengeluaran
+              </td>
               <td style={{ width: "70%" }}>:</td>
             </tr>
           </tbody>
         </table>
 
-        <table style={{ width: "100%", textAlign: "center", borderCollapse: "collapse", marginBottom: 12 }}>
+        <table
+          style={{
+            width: "100%",
+            textAlign: "center",
+            borderCollapse: "collapse",
+            marginBottom: 12,
+          }}
+        >
           <thead>
             <tr>
               <th style={{ width: "5%" }}></th>
-              <th className="cetak-table-header-bg" style={{ width: "5%", border: "1px solid #000", padding: 2 }}>No.</th>
-              <th className="cetak-table-header-bg" style={{ width: "75%", border: "1px solid #000", padding: 2 }}>Rincian</th>
-              <th className="cetak-table-header-bg" style={{ width: "15%", border: "1px solid #000", padding: 2 }}>Nilai</th>
+              <th
+                className="cetak-table-header-bg"
+                style={{ width: "5%", border: "1px solid #000", padding: 2 }}
+              >
+                No.
+              </th>
+              <th
+                className="cetak-table-header-bg"
+                style={{ width: "75%", border: "1px solid #000", padding: 2 }}
+              >
+                Rincian
+              </th>
+              <th
+                className="cetak-table-header-bg"
+                style={{ width: "15%", border: "1px solid #000", padding: 2 }}
+              >
+                Nilai
+              </th>
             </tr>
           </thead>
           <tbody>
             {datas.map((d, i) => (
               <tr key={i}>
                 <td></td>
-                <td style={{ textAlign: "center", border: "1px solid #000", padding: 2 }}>{i + 1}</td>
+                <td
+                  style={{
+                    textAlign: "center",
+                    border: "1px solid #000",
+                    padding: 2,
+                  }}
+                >
+                  {i + 1}
+                </td>
                 <td
                   style={{
                     textAlign: "left",
@@ -157,50 +284,111 @@ export default function CetakLPBS() {
                 >
                   {d.uraian_kegiatan}
                 </td>
-                <td style={{ textAlign: "right", border: "1px solid #000", padding: 2 }}>{rupiah(d.nilai)}</td>
+                <td
+                  style={{
+                    textAlign: "right",
+                    border: "1px solid #000",
+                    padding: 2,
+                  }}
+                >
+                  {rupiah(d.nilai)}
+                </td>
               </tr>
             ))}
             {Array.from({ length: dummyRowCount }, (_, i) => (
               <tr key={`dummy-${i}`}>
                 <td></td>
-                <td style={{ border: "1px solid #000", padding: 2 }}>{dummyStart + i}</td>
-                <td style={{ textAlign: "left", border: "1px solid #000", padding: 2 }}>-</td>
-                <td style={{ textAlign: "right", border: "1px solid #000", padding: 2 }}>-</td>
+                <td style={{ border: "1px solid #000", padding: 2 }}>
+                  {dummyStart + i}
+                </td>
+                <td
+                  style={{
+                    textAlign: "left",
+                    border: "1px solid #000",
+                    padding: 2,
+                  }}
+                >
+                  -
+                </td>
+                <td
+                  style={{
+                    textAlign: "right",
+                    border: "1px solid #000",
+                    padding: 2,
+                  }}
+                >
+                  -
+                </td>
               </tr>
             ))}
 
             <tr>
               <td></td>
-              <td colSpan={2} style={{ textAlign: "left", padding: "2px 0 2px 0" }}>
+              <td
+                colSpan={2}
+                style={{ textAlign: "left", padding: "2px 0 2px 0" }}
+              >
                 Total Pengeluaran
               </td>
-              <td style={{ textAlign: "right", border: "1px solid #000", padding: 2 }}>{rupiah(pembulatan)}</td>
+              <td
+                style={{
+                  textAlign: "right",
+                  border: "1px solid #000",
+                  padding: 2,
+                }}
+              >
+                {rupiah(pembulatan)}
+              </td>
             </tr>
             <tr>
-              <td colSpan={3} style={{ textAlign: "left", paddingLeft: 10, padding: 2 }}>
+              <td
+                colSpan={3}
+                style={{ textAlign: "left", paddingLeft: 10, padding: 2 }}
+              >
                 4. Total Bon Sementara
               </td>
-              <td style={{ textAlign: "right", border: "1px solid #000", padding: 2 }}>{rupiah(act_nilai)}</td>
+              <td
+                style={{
+                  textAlign: "right",
+                  border: "1px solid #000",
+                  padding: 2,
+                }}
+              >
+                {rupiah(act_nilai)}
+              </td>
             </tr>
             <tr>
-              <td colSpan={2} style={{ textAlign: "left", paddingLeft: 10, padding: 2 }}>
+              <td
+                colSpan={2}
+                style={{ textAlign: "left", paddingLeft: 10, padding: 2 }}
+              >
                 5. Selisih
               </td>
               <td style={{ padding: 2 }}>
                 <div style={{ textAlign: "left", paddingLeft: 10 }}>
                   <span style={{ paddingLeft: 40 }}>
-                    {selisihLebih ? "☑ Lebih bayar \u00A0 ☐ Kurang bayar" : "☐ Lebih bayar \u00A0 ☑ Kurang bayar"}
+                    {selisihLebih
+                      ? "☑ Lebih bayar \u00A0 ☐ Kurang bayar"
+                      : "☐ Lebih bayar \u00A0 ☑ Kurang bayar"}
                   </span>
                 </div>
               </td>
-              <td style={{ textAlign: "right", border: "1px solid #000", padding: 2 }}>
+              <td
+                style={{
+                  textAlign: "right",
+                  border: "1px solid #000",
+                  padding: 2,
+                }}
+              >
                 {rupiah(Number(act_nilai || 0) - Number(pembulatan || 0))}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <table style={{ width: "50%", marginTop: 3, borderCollapse: "collapse" }}>
+        <table
+          style={{ width: "50%", marginTop: 3, borderCollapse: "collapse" }}
+        >
           <thead>
             <tr>
               <td colSpan={3}></td>
@@ -215,24 +403,47 @@ export default function CetakLPBS() {
             <tr>
               {status === "approvebysh" && (
                 <>
-                  <td style={{ textAlign: "center" }}>{sh1 && <img className="ttd" src={ttdSrc(sh1.nama)} alt="Tanda Tangan" style={{ height: 80, width: 80 }} />}</td>
+                  <td style={{ textAlign: "center" }}>
+                    {sh1 && (
+                      <StampBlock nama={sh1.nama} waktu={approved_sh_lpbs_at} />
+                    )}
+                  </td>
                   <td />
                   <td />
                 </>
               )}
               {status === "approvebydh" && (
                 <>
-                  <td style={{ textAlign: "center" }}>{sh1 && <img className="ttd" src={ttdSrc(sh1.nama)} alt="Tanda Tangan" style={{ height: 80, width: 80 }} />}</td>
-                  <td style={{ textAlign: "center" }}>{sh2 && <img className="ttd" src={ttdSrc(sh2.nama)} alt="Tanda Tangan" style={{ height: 80, width: 80 }} />}</td>
+                  <td style={{ textAlign: "center" }}>
+                    {sh1 && (
+                      <StampBlock nama={sh1.nama} waktu={approved_sh_lpbs_at} />
+                    )}
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    {sh2 && (
+                      <StampBlock nama={sh2.nama} waktu={approved_dh_lpbs_at} />
+                    )}
+                  </td>
                   <td />
                 </>
               )}
               {status === "approve" && (
                 <>
-                  <td style={{ textAlign: "center" }}>{sh1 && <img className="ttd" src={ttdSrc(sh1.nama)} alt="Tanda Tangan" style={{ height: 80, width: 80 }} />}</td>
-                  <td style={{ textAlign: "center" }}>{sh2 && <img className="ttd" src={ttdSrc(sh2.nama)} alt="Tanda Tangan" style={{ height: 80, width: 80 }} />}</td>
                   <td style={{ textAlign: "center" }}>
-                    <img className="ttd" src={ttdSrc("Edward Supandi")} alt="Tanda Tangan" style={{ height: 80, width: 80 }} />
+                    {sh1 && (
+                      <StampBlock nama={sh1.nama} waktu={approved_sh_lpbs_at} />
+                    )}
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    {sh2 && (
+                      <StampBlock nama={sh2.nama} waktu={approved_dh_lpbs_at} />
+                    )}
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    <StampBlock
+                      nama="Edward Supandi"
+                      waktu={approved_hod_lpbs_at}
+                    />
                   </td>
                 </>
               )}
@@ -244,17 +455,16 @@ export default function CetakLPBS() {
                 </>
               )}
             </tr>
-            <tr>
-              <td style={{ textAlign: "center" }}>({sh1?.nama})</td>
-              <td style={{ textAlign: "center" }}>({sh2?.nama})</td>
-              <td style={{ textAlign: "center" }}>(Edward Supandi)</td>
-            </tr>
           </tbody>
         </table>
 
-        <p style={{ color: "#666", fontSize: 11, marginTop: 8 }}>*) Dokumen asli penggunaan/pembayaran harus dilampirkan</p>
+        <p style={{ color: "#666", fontSize: 11, marginTop: 8 }}>
+          *) Dokumen asli penggunaan/pembayaran harus dilampirkan
+        </p>
       </div>
-      <p style={{ textAlign: "center", color: "#666", fontSize: 11 }}>SOP-PC-F02-Rev.0</p>
+      <p style={{ textAlign: "left", color: "#666", fontSize: 11, margin: 0 }}>
+        SOP-PC-F02-Rev.0
+      </p>
     </div>
   );
 }

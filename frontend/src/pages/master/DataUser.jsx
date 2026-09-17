@@ -23,7 +23,7 @@ const fields = [
     label: "Level",
     type: "select",
     required: true,
-    options: ["SH", "DH", "HOD", "Super_User"],
+    options: ["Admin", "SH", "DH", "HOD", "SuperUser"],
   },
   { name: "user", label: "Username", required: true },
   { name: "email", label: "Email", type: "email", required: true },
@@ -47,7 +47,15 @@ export default function DataUser() {
       idKey="id"
       api={userApi}
       searchableKeys={["nip", "nama", "user", "warehouse"]}
-      emptyForm={{ nip: "", nama: "", level: "", user: "", email: "", warehouse: "", password: "" }}
+      emptyForm={{
+        nip: "",
+        nama: "",
+        level: "",
+        user: "",
+        email: "",
+        warehouse: "",
+        password: "",
+      }}
       addLabel="Tambah User"
     />
   );

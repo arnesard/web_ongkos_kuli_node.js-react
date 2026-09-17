@@ -50,7 +50,7 @@ async function bsReport(req, res) {
 
     const [shUser] = await pool.query(
       "SELECT id, nama, level, warehouse FROM data_user_tbl WHERE warehouse = ? ORDER BY id ASC",
-      [datas[0].warehouse]
+      [datas[0].warehouse],
     );
 
     return ok(res, { datas, shUser, title: "Preview BS" });
@@ -68,24 +68,74 @@ async function lpbsReport(req, res) {
   const no_doc = decodeNoDoc(req.params.no_doc_b64);
 
   try {
-    const [rows] = await pool.query(`SELECT * FROM ${TABLE_BON} WHERE no_doc = ? ORDER BY tgl DESC`, [no_doc]);
+    const [rows] = await pool.query(
+      `SELECT * FROM ${TABLE_BON} WHERE no_doc = ? ORDER BY tgl DESC`,
+      [no_doc],
+    );
     if (rows.length === 0) {
       return fail(res, "Data tidak ditemukan.", 404);
     }
 
     const first = rows[0];
-    const { act_nilai, status, status_bs, tgl, warehouse } = first;
+    const {
+      act_nilai,
+      status,
+      status_bs,
+      tgl,
+      warehouse,
+      approved_sh_lpbs_at,
+      approved_dh_lpbs_at,
+      approved_hod_lpbs_at,
+    } = first;
 
-    const breakdown = await computeLpbsBreakdown(tgl, warehouse);
+    // v-- TAMBAHIN INI, sebelum manggil computeLpbsBreakdown --v
+    const [kendaraanRows] = await pool.query(
+      "SELECT nama_kendaraan, biaya_truk FROM data_kendaraan_tbl",
+    );
+    const [barangRows] = await pool.query(
+      "SELECT jenis, ongkos FROM data_barang_tbl",
+    );
+    const [umRows] = await pool.query(
+      "SELECT harga_uang_makan FROM data_uang_makan_tbl WHERE tahun = ? LIMIT 1",
+      [new Date().getFullYear()],
+    );
+    const shared = {
+      biayaTrukArr: Object.fromEntries(
+        kendaraanRows.map((item) => [item.nama_kendaraan, item.biaya_truk]),
+      ),
+      biayaTrukArrJMW: Object.fromEntries(
+        barangRows.map((item) => [item.jenis, item.ongkos]),
+      ),
+      hargaUM: Number(umRows[0]?.harga_uang_makan || 0),
+    };
+    // ^-- SAMPE SINI --^
+
+    const breakdown = await computeLpbsBreakdown(tgl, warehouse, shared); // <-- tambahin `shared` di sini
     const datas = [];
-    if (breakdown.uraian1) datas.push({ uraian_kegiatan: breakdown.uraian1, nilai: breakdown.nilai1 });
-    if (breakdown.uraian2) datas.push({ uraian_kegiatan: breakdown.uraian2, nilai: breakdown.nilai2 });
-    if (breakdown.uraian3) datas.push({ uraian_kegiatan: breakdown.uraian3, nilai: breakdown.nilai3 });
-    if (breakdown.uraian4) datas.push({ uraian_kegiatan: breakdown.uraian4, nilai: breakdown.nilai4 });
+    if (breakdown.uraian1)
+      datas.push({
+        uraian_kegiatan: breakdown.uraian1,
+        nilai: breakdown.nilai1,
+      });
+    if (breakdown.uraian2)
+      datas.push({
+        uraian_kegiatan: breakdown.uraian2,
+        nilai: breakdown.nilai2,
+      });
+    if (breakdown.uraian3)
+      datas.push({
+        uraian_kegiatan: breakdown.uraian3,
+        nilai: breakdown.nilai3,
+      });
+    if (breakdown.uraian4)
+      datas.push({
+        uraian_kegiatan: breakdown.uraian4,
+        nilai: breakdown.nilai4,
+      });
 
     const [shUser] = await pool.query(
       "SELECT id, nama, level, warehouse FROM data_user_tbl WHERE warehouse = ? ORDER BY id ASC",
-      [warehouse]
+      [warehouse],
     );
 
     return ok(res, {
@@ -98,6 +148,9 @@ async function lpbsReport(req, res) {
       status_bs,
       act_nilai: act_nilai || 0,
       pembulatan: roundToHundred(breakdown.total_nilai),
+      approved_sh_lpbs_at,
+      approved_dh_lpbs_at,
+      approved_hod_lpbs_at,
     });
   } catch (err) {
     console.error("[report.lpbsReport]", err);

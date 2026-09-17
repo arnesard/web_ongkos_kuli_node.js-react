@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Loader2, ClipboardList, Printer } from "lucide-react";
 import SelectNeo from "../../components/common/SelectNeo";
@@ -39,6 +39,33 @@ function formatTgl(tgl) {
   });
 }
 
+function formatTglJam(dt) {
+  if (!dt) return "-";
+  const d = new Date(dt);
+  if (Number.isNaN(d.getTime())) return "-";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+}
+
+// Ambil jam approve yang relevan sesuai status dokumen SEKARANG
+function getApprovedAt(row, tab) {
+  const rowStatus = tab === "lpbs" ? row.status : row.status_bs;
+  if (tab === "lpbs") {
+    if (rowStatus === "approvebysh") return row.approved_sh_lpbs_at;
+    if (rowStatus === "approvebydh") return row.approved_dh_lpbs_at;
+    if (rowStatus === "approve") return row.approved_hod_lpbs_at;
+  } else {
+    if (rowStatus === "approvebysh") return row.approved_sh_bs_at;
+    if (rowStatus === "approvebydh") return row.approved_dh_bs_at;
+    if (rowStatus === "approve") return row.approved_hod_bs_at;
+  }
+  return null;
+}
+
 function StatusBadge({ status }) {
   const s = status || "";
   let cls = "info";
@@ -65,7 +92,7 @@ function StatusBadge({ status }) {
 export default function ApproveBongkarmuat() {
   const { user } = useAuth();
   const userLevel = String(user?.level || "").toLowerCase();
-
+  const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(null); // null | "bs" | "lpbs" — samain sama "Tekan Tombol Kategori" di awal
   const [status, setStatus] = useState("");
   const [searchDate, setSearchDate] = useState("");
@@ -102,7 +129,15 @@ export default function ApproveBongkarmuat() {
 
   // Muat badge pending count begitu halaman dibuka (tab masih null)
   useEffect(() => {
-    const timer = setTimeout(() => fetchData(null, "", ""), 0);
+    const tabParam = searchParams.get("tab");
+    const timer = setTimeout(() => {
+      if (tabParam === "bs" || tabParam === "lpbs") {
+        setTab(tabParam);
+        fetchData(tabParam, "", "");
+      } else {
+        fetchData(null, "", "");
+      }
+    }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -302,6 +337,7 @@ export default function ApproveBongkarmuat() {
                     </th>
                     <th className="col-value">Nilai</th>
                     <th className="col-status">Status</th>
+                    <th className="col-approved-at">Waktu Approve</th>
                     <th className="col-actions">Aksi</th>
                   </tr>
                 </thead>
@@ -344,8 +380,6 @@ export default function ApproveBongkarmuat() {
                         >
                           <Link
                             to={`/${tab === "lpbs" ? "transaksi-lpbs" : "transaksi-bs"}/${encodeNoDoc(row.no_doc)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             title="Preview / Cetak"
                             className="approve-print-link"
                           >
@@ -370,6 +404,12 @@ export default function ApproveBongkarmuat() {
                           style={{ textAlign: "center" }}
                         >
                           <StatusBadge status={rowStatus} />
+                        </td>
+                        <td
+                          className="col-approved-at"
+                          style={{ textAlign: "center", fontSize: 11 }}
+                        >
+                          {formatTglJam(getApprovedAt(row, tab))}
                         </td>
                         <td
                           className="col-actions"

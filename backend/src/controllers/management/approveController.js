@@ -451,6 +451,9 @@ async function list(req, res) {
             no_doc: row.no_doc,
             warehouse: row.warehouse,
             status: row.status,
+            approved_sh_lpbs_at: row.approved_sh_lpbs_at,
+            approved_dh_lpbs_at: row.approved_dh_lpbs_at,
+            approved_hod_lpbs_at: row.approved_hod_lpbs_at,
             ...breakdown,
           });
         }
@@ -467,6 +470,9 @@ async function list(req, res) {
             uraian_list: [],
             status_bs: row.status_bs,
             total_nilai: 0,
+            approved_sh_bs_at: row.approved_sh_bs_at,
+            approved_dh_bs_at: row.approved_dh_bs_at,
+            approved_hod_bs_at: row.approved_hod_bs_at,
           };
         }
         if (row.uraian_kegiatan) map[key].uraian_list.push(row.uraian_kegiatan);
@@ -508,6 +514,18 @@ async function process(req, res) {
   }
 
   const statusColumn = kategori === "lpbs" ? "status" : "status_bs";
+  const TIMESTAMP_COLUMN = {
+    bs: {
+      approvebysh: "approved_sh_bs_at",
+      approvebydh: "approved_dh_bs_at",
+      approve: "approved_hod_bs_at",
+    },
+    lpbs: {
+      approvebysh: "approved_sh_lpbs_at",
+      approvebydh: "approved_dh_lpbs_at",
+      approve: "approved_hod_lpbs_at",
+    },
+  };
 
   try {
     const [rows] = await pool.query(
@@ -534,10 +552,20 @@ async function process(req, res) {
       );
     }
 
-    await pool.query(
-      `UPDATE ${TABLE_BON} SET ${statusColumn} = ? WHERE no_doc = ?`,
-      [newStatus, no_doc],
-    );
+    const tsColumn =
+      TIMESTAMP_COLUMN[kategori === "lpbs" ? "lpbs" : "bs"][newStatus];
+    if (tsColumn) {
+      await pool.query(
+        `UPDATE ${TABLE_BON} SET ${statusColumn} = ?, ${tsColumn} = NOW() WHERE no_doc = ?`,
+        [newStatus, no_doc],
+      );
+    } else {
+      await pool.query(
+        `UPDATE ${TABLE_BON} SET ${statusColumn} = ? WHERE no_doc = ?`,
+        [newStatus, no_doc],
+      );
+    }
+
     return ok(res, { status: newStatus }, "Dokumen berhasil diproses.");
   } catch (err) {
     console.error("[approveBongkarmuat.process]", err);

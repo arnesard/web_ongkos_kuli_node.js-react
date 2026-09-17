@@ -390,7 +390,7 @@ export default function PemindahanBarang() {
                 <input
                   type="text"
                   id="biaya_uangjalan"
-                  placeholder="Uang Jalan"
+                  placeholder="Lain-lain"
                   inputMode="numeric"
                   value={form.biaya_uangjalan}
                   onChange={(e) =>
@@ -656,7 +656,7 @@ function PemindahanRow({ idx, row, isOpen, onToggle, onEdit, onDelete }) {
                     {rupiah(row.biaya_parkir)}
                   </td>
                   <th style={{ padding: "6px 8px", textAlign: "left" }}>
-                    Uang Jalan
+                    Lain-Lain
                   </th>
                   <td style={{ padding: "6px 8px" }}>
                     {rupiah(row.biaya_uangjalan)}

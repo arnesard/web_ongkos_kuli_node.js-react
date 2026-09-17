@@ -1,8 +1,31 @@
 const bcrypt = require("bcryptjs");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const pool = require("../../config/db");
 const { ok, fail } = require("../../utils/response");
 
 const TABLE = "data_user_tbl";
+
+// Folder ttd ikut konvensi lama (dipakai CetakLPBS.jsx / CetakBS.jsx: /img/ttd/{nama}.png)
+// __dirname = backend/src/controllers/master -> naik 4x sampai root repo, lalu masuk frontend/public/img/ttd
+const TTD_DIR = path.join(__dirname, "../../../uploads/ttd");
+
+// Biar aman dari karakter aneh/path traversal pas dipakai jadi nama file
+function safeTtdName(nama) {
+  return String(nama)
+    .replace(/[\/\\:*?"<>|]/g, "")
+    .trim();
+}
+
+const ttdUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // max 2MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "image/png") return cb(null, true);
+    cb(new Error("Hanya file PNG yang diperbolehkan untuk tanda tangan."));
+  },
+}).single("ttd");
 
 async function list(req, res) {
   const { search } = req.query;
@@ -28,14 +51,21 @@ async function create(req, res) {
   const { nip, nama, level, user, email, warehouse, password } = req.body;
 
   if (!nip || !nama || !level || !user || !email || !warehouse || !password) {
-    return fail(res, "Semua field wajib diisi (password minimal 4 karakter).", 422);
+    return fail(
+      res,
+      "Semua field wajib diisi (password minimal 4 karakter).",
+      422,
+    );
   }
   if (password.length < 4) {
     return fail(res, "Password minimal 4 karakter.", 422);
   }
 
   try {
-    const [existing] = await pool.query(`SELECT id FROM ${TABLE} WHERE user = ?`, [user]);
+    const [existing] = await pool.query(
+      `SELECT id FROM ${TABLE} WHERE user = ?`,
+      [user],
+    );
     if (existing.length > 0) {
       return fail(res, "Username sudah digunakan.", 422);
     }
@@ -43,7 +73,7 @@ async function create(req, res) {
     const hashed = await bcrypt.hash(password, 10);
     await pool.query(
       `INSERT INTO ${TABLE} (nip, nama, level, user, email, warehouse, password) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [nip, nama, level, user, email, warehouse, hashed]
+      [nip, nama, level, user, email, warehouse, hashed],
     );
     return ok(res, null, "User berhasil ditambahkan.", 201);
   } catch (err) {
@@ -57,28 +87,48 @@ async function update(req, res) {
   const { nip, nama, level, user, email, warehouse, password } = req.body;
 
   try {
-    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(
+      `SELECT id, nama FROM ${TABLE} WHERE id = ?`,
+      [id],
+    );
     if (rows.length === 0) return fail(res, "User tidak ditemukan.", 404);
+    const namaLama = rows[0].nama;
 
     // Username unik kecuali untuk user yang sedang diedit (samain dgn rule Laravel unique:...,$id)
-    const [dupUser] = await pool.query(`SELECT id FROM ${TABLE} WHERE user = ? AND id != ?`, [user, id]);
+    const [dupUser] = await pool.query(
+      `SELECT id FROM ${TABLE} WHERE user = ? AND id != ?`,
+      [user, id],
+    );
     if (dupUser.length > 0) {
       return fail(res, "Username sudah digunakan oleh user lain.", 422);
     }
 
     if (password && password.length > 0) {
-      if (password.length < 4) return fail(res, "Password minimal 4 karakter.", 422);
+      if (password.length < 4)
+        return fail(res, "Password minimal 4 karakter.", 422);
       const hashed = await bcrypt.hash(password, 10);
       await pool.query(
         `UPDATE ${TABLE} SET nip=?, nama=?, level=?, user=?, email=?, warehouse=?, password=? WHERE id=?`,
-        [nip, nama, level, user, email, warehouse, hashed, id]
+        [nip, nama, level, user, email, warehouse, hashed, id],
       );
     } else {
       // Password kosong -> tidak diubah (samain dgn 'nullable' + $request->filled('password') di Laravel)
       await pool.query(
         `UPDATE ${TABLE} SET nip=?, nama=?, level=?, user=?, email=?, warehouse=? WHERE id=?`,
-        [nip, nama, level, user, email, warehouse, id]
+        [nip, nama, level, user, email, warehouse, id],
       );
+    }
+
+    // Kalau nama diganti (misal pergantian pimpinan), ikut pindahin file ttd
+    // biar tanda tangan lama gak "nyasar" dan tetap ke-link ke user ini.
+    if (nama && nama !== namaLama) {
+      try {
+        const oldPath = path.join(TTD_DIR, `${safeTtdName(namaLama)}.png`);
+        const newPath = path.join(TTD_DIR, `${safeTtdName(nama)}.png`);
+        if (fs.existsSync(oldPath)) fs.renameSync(oldPath, newPath);
+      } catch (e) {
+        console.warn("[user.update] gagal rename file ttd:", e.message);
+      }
     }
 
     return ok(res, null, "Data berhasil diupdate.");
@@ -91,7 +141,9 @@ async function update(req, res) {
 async function remove(req, res) {
   const { id } = req.params;
   try {
-    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [
+      id,
+    ]);
     if (rows.length === 0) return fail(res, "User tidak ditemukan.", 404);
 
     await pool.query(`DELETE FROM ${TABLE} WHERE id = ?`, [id]);
@@ -102,4 +154,34 @@ async function remove(req, res) {
   }
 }
 
-module.exports = { list, create, update, remove };
+async function uploadTtd(req, res) {
+  ttdUpload(req, res, async (err) => {
+    if (err) {
+      return fail(res, err.message || "Gagal mengunggah file.", 422);
+    }
+    if (!req.file) {
+      return fail(res, "File tanda tangan tidak ditemukan.", 422);
+    }
+
+    const { id } = req.params;
+    try {
+      const [rows] = await pool.query(
+        `SELECT nama FROM ${TABLE} WHERE id = ?`,
+        [id],
+      );
+      if (rows.length === 0) return fail(res, "User tidak ditemukan.", 404);
+
+      if (!fs.existsSync(TTD_DIR)) fs.mkdirSync(TTD_DIR, { recursive: true });
+
+      const filePath = path.join(TTD_DIR, `${safeTtdName(rows[0].nama)}.png`);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      return ok(res, null, "Tanda tangan berhasil diperbarui.");
+    } catch (e) {
+      console.error("[user.uploadTtd]", e);
+      return fail(res, "Gagal menyimpan file tanda tangan.", 500);
+    }
+  });
+}
+
+module.exports = { list, create, update, remove, uploadTtd };
