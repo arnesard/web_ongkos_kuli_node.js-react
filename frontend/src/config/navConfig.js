@@ -15,19 +15,27 @@ export const navConfig = [
     key: "entry-reguler",
     label: "Entry Ongkos Reguler",
     icon: "ClipboardList",
-    // Sesuai matrix akses: role SH cuma lihat Dashboard & Management
-    hideForRoles: ["SH"],
+    // Sesuai matrix akses: role SH & DH cuma lihat Dashboard & Management
+    hideForRoles: ["SH", "DH"],
     children: [
       {
         key: "bon-sementara",
         label: "Permintaan Bon Sementara",
         path: "/bon-sementara",
       },
-      { key: "muat-fg", label: "Muat Barang FG Warehouse", path: "/muat-fg" },
+      {
+        key: "muat-fg",
+        label: "Muat Barang FG Warehouse",
+        path: "/muat-fg",
+        // AdminJMW (gudang RM) gak perlu Muat FG
+        hideForAdminWarehouses: ["JMW"],
+      },
       {
         key: "bongkar-rm",
         label: "Bongkar Muat Barang RM Warehouse",
         path: "/bongkar-rm",
+        // Cuma AdminJMW yang boleh lihat; Admin gudang FG (BPW/APW/DPW/RPW) gak perlu
+        hideForAdminWarehouses: ["BPW", "APW", "DPW", "RPW"],
       },
     ],
   },
@@ -36,13 +44,15 @@ export const navConfig = [
     key: "entry-nonreguler",
     label: "Entry Ongkos Non Reguler",
     icon: "PackagePlus",
-    hideForRoles: ["SH"],
+    hideForRoles: ["SH", "DH"],
     children: [
       { key: "uang-makan", label: "Uang Makan Kuli", path: "/uang-makan" },
       {
         key: "susun-tire",
         label: "Susun Tire Lantai/Rak",
         path: "/susun-tire",
+        // AdminJMW gak perlu Susun Tire Lantai/Rak
+        hideForAdminWarehouses: ["JMW"],
       },
       {
         key: "pemindahan-barang",
@@ -76,21 +86,34 @@ export const navConfig = [
     key: "master",
     label: "Master Data",
     icon: "Database",
-    hideForRoles: ["SH"],
+    hideForRoles: ["SH", "DH"],
     children: [
       { key: "daftar-kuli", label: "Daftar Nama Kuli", path: "/daftar-kuli" },
-      { key: "harga-um", label: "Harga Uang Makan", path: "/harga-um" },
+      // Semua login Admin (AdminBPW/APW/DPW/RPW/JMW) cuma boleh lihat Daftar Nama Kuli
+      {
+        key: "harga-um",
+        label: "Harga Uang Makan",
+        path: "/harga-um",
+        hideForRoles: ["Admin"],
+      },
       {
         key: "kendaraan-fg",
         label: "Kendaraan FG Warehouse",
         path: "/kendaraan-fg",
+        hideForRoles: ["Admin"],
       },
       {
         key: "jenis-barang",
         label: "Jenis Barang RM Warehouse",
         path: "/jenis-barang",
+        hideForRoles: ["Admin"],
       },
-      { key: "data-user", label: "Data User", path: "/data-user" },
+      {
+        key: "data-user",
+        label: "Data User",
+        path: "/data-user",
+        hideForRoles: ["Admin"],
+      },
     ],
   },
   {

@@ -50,10 +50,19 @@ function StampBlock({ nama, waktu }) {
         alt="APPROVED"
         style={{ height: 70, width: 70 }}
       />
-      <div>({nama})</div>
       {waktu && (
-        <div style={{ fontSize: 10, color: "#333" }}>{formatTglJam(waktu)}</div>
+        <div
+          style={{
+            fontSize: 10,
+            color: "#333",
+            fontWeight: "bold",
+            fontStyle: "italic",
+          }}
+        >
+          {formatTglJam(waktu)}
+        </div>
       )}
+      <div>({nama})</div>
     </div>
   );
 }

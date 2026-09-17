@@ -214,7 +214,7 @@ export default function ApproveBongkarmuat() {
             onClick={() => openTab("bs")}
           >
             BS
-            {pendingCounts.bs > 0 && (
+            {userLevel !== "admin" && pendingCounts.bs > 0 && (
               <span className="badge-neo danger">{pendingCounts.bs}</span>
             )}
           </button>
@@ -225,7 +225,7 @@ export default function ApproveBongkarmuat() {
             onClick={() => openTab("lpbs")}
           >
             LPBS
-            {pendingCounts.lpbs > 0 && (
+            {userLevel !== "admin" && pendingCounts.lpbs > 0 && (
               <span className="badge-neo danger">{pendingCounts.lpbs}</span>
             )}
           </button>

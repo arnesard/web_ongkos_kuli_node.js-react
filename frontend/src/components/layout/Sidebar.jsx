@@ -35,9 +35,30 @@ export default function Sidebar({
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const visibleNav = navConfig.filter(
-    (item) => !(item.hideForRoles || []).includes(user?.level),
-  );
+  // Dipakai buat single item, group, maupun children di dalam group:
+  // - hideForRoles: sembunyikan buat level tertentu (SH, DH, Admin, dst), berlaku ke siapa aja.
+  // - hideForAdminWarehouses: khusus login level "Admin", sembunyikan berdasarkan
+  //   kode warehouse-nya (AdminBPW/AdminAPW/AdminDPW/AdminRPW/AdminJMW).
+  const isNavItemVisible = (item) => {
+    if ((item.hideForRoles || []).includes(user?.level)) return false;
+    if (
+      user?.level === "Admin" &&
+      (item.hideForAdminWarehouses || []).includes(user?.warehouse)
+    ) {
+      return false;
+    }
+    return true;
+  };
+
+  const visibleNav = navConfig
+    .filter(isNavItemVisible)
+    .map((item) =>
+      item.type === "group"
+        ? { ...item, children: item.children.filter(isNavItemVisible) }
+        : item,
+    )
+    // Grup yang semua child-nya kesaring habis buat role ini nggak usah ditampilin.
+    .filter((item) => item.type !== "group" || item.children.length > 0);
 
   const activeGroupKey = visibleNav.find(
     (g) =>
