@@ -132,8 +132,11 @@ export default function ApproveBongkarmuat() {
     const tabParam = searchParams.get("tab");
     const timer = setTimeout(() => {
       if (tabParam === "bs" || tabParam === "lpbs") {
+        const nextStatus = userLevel === "superuser" ? "onprocess" : "";
+
         setTab(tabParam);
-        fetchData(tabParam, "", "");
+        setStatus(nextStatus);
+        fetchData(tabParam, nextStatus, "");
       } else {
         fetchData(null, "", "");
       }
@@ -144,8 +147,12 @@ export default function ApproveBongkarmuat() {
 
   const openTab = (nextTab) => {
     setTab(nextTab);
-    setStatus("");
-    fetchData(nextTab, "", searchDate);
+
+    // Super User default menampilkan On Process
+    const nextStatus = userLevel === "superuser" ? "onprocess" : "";
+
+    setStatus(nextStatus);
+    fetchData(nextTab, nextStatus, searchDate);
   };
 
   const handleStatusChange = (_name, value) => {
