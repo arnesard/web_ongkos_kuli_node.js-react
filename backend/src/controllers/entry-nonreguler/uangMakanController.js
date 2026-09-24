@@ -26,7 +26,9 @@ async function list(req, res) {
     sql += " AND DATE(um.tgl) = ?";
     params.push(tgl);
   } else {
-    sql += " AND DATE(um.tgl) = CURDATE()";
+    // sql += " AND DATE(um.tgl) = CURDATE()";
+    // sql += `AND DATE (um.tgl) >= CASE WHEN DAYOFWEEK(CURDATE()) = 2 THEN CURDATE() - INTERVAL 2 DAY ELSE CURDATE() END  AND DATE (um.tgl) <= CURDATE()`;
+    sql += `AND DATE(um.tgl) BETWEEN CURDATE()- INTERVAL 2 DAY AND CURDATE()`;
   }
   if (id_kuli) {
     sql += " AND um.id_kuli LIKE ?";
@@ -62,12 +64,22 @@ async function create(req, res) {
   }
 
   try {
-    const [existing] = await pool.query(`SELECT id FROM ${TABLE} WHERE tgl = ? AND id_kuli = ?`, [tgl, id_kuli]);
+    const [existing] = await pool.query(
+      `SELECT id FROM ${TABLE} WHERE tgl = ? AND id_kuli = ?`,
+      [tgl, id_kuli],
+    );
     if (existing.length > 0) {
-      return fail(res, "Data untuk kuli ini pada tanggal tersebut sudah ada.", 422);
+      return fail(
+        res,
+        "Data untuk kuli ini pada tanggal tersebut sudah ada.",
+        422,
+      );
     }
 
-    await pool.query(`INSERT INTO ${TABLE} (tgl, id_kuli, warehouse) VALUES (?, ?, ?)`, [tgl, id_kuli, warehouse]);
+    await pool.query(
+      `INSERT INTO ${TABLE} (tgl, id_kuli, warehouse) VALUES (?, ?, ?)`,
+      [tgl, id_kuli, warehouse],
+    );
     return ok(res, null, "Data berhasil ditambahkan.", 201);
   } catch (err) {
     console.error("[uangMakan.create]", err);
@@ -81,13 +93,19 @@ async function update(req, res) {
   const { id } = req.params;
   const { tgl, id_kuli } = req.body;
 
-  if (!tgl || !id_kuli) return fail(res, "Tanggal dan ID kuli wajib diisi.", 422);
+  if (!tgl || !id_kuli)
+    return fail(res, "Tanggal dan ID kuli wajib diisi.", 422);
 
   try {
-    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [
+      id,
+    ]);
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
 
-    await pool.query(`UPDATE ${TABLE} SET tgl=?, id_kuli=?, warehouse=? WHERE id=?`, [tgl, id_kuli, warehouse, id]);
+    await pool.query(
+      `UPDATE ${TABLE} SET tgl=?, id_kuli=?, warehouse=? WHERE id=?`,
+      [tgl, id_kuli, warehouse, id],
+    );
     return ok(res, null, "Data berhasil diperbarui.");
   } catch (err) {
     console.error("[uangMakan.update]", err);
@@ -99,7 +117,9 @@ async function update(req, res) {
 async function remove(req, res) {
   const { id } = req.params;
   try {
-    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [id]);
+    const [rows] = await pool.query(`SELECT id FROM ${TABLE} WHERE id = ?`, [
+      id,
+    ]);
     if (rows.length === 0) return fail(res, "Data tidak ditemukan.", 404);
     await pool.query(`DELETE FROM ${TABLE} WHERE id = ?`, [id]);
     return ok(res, null, "Data berhasil dihapus.");
@@ -145,13 +165,19 @@ async function exportCsv(req, res) {
       return fail(res, "Tidak ada data uang makan untuk diexport.", 422);
     }
 
-    const header = ["Tanggal", "ID Kuli", "Nama Kuli", "Warehouse", "Jumlah Uang Makan"];
+    const header = [
+      "Tanggal",
+      "ID Kuli",
+      "Nama Kuli",
+      "Warehouse",
+      "Jumlah Uang Makan",
+    ];
     const csvLines = [header.join(",")];
     rows.forEach((r) => {
       csvLines.push(
         [r.tgl, r.id_kuli, r.nama_kuli, r.warehouse, r.jumlah_uang_makan]
           .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
-          .join(",")
+          .join(","),
       );
     });
 
