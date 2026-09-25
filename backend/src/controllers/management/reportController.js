@@ -48,12 +48,20 @@ async function bsReport(req, res) {
       return fail(res, "Data tidak ditemukan.", 404);
     }
 
-    const [shUser] = await pool.query(
-      "SELECT id, nama, level, warehouse FROM data_user_tbl WHERE warehouse = ? ORDER BY id ASC",
-      [datas[0].warehouse],
-    );
+    // Ambil data user SH & DH berdasarkan warehouse dokumen, serta HOD aktif
+    const [[shUser], [hodRows]] = await Promise.all([
+      pool.query(
+        "SELECT id, nama, level, warehouse FROM data_user_tbl WHERE warehouse = ? ORDER BY id ASC",
+        [datas[0].warehouse],
+      ),
+      pool.query(
+        "SELECT id, nama, level FROM data_user_tbl WHERE UPPER(level) = 'HOD' LIMIT 1",
+      ),
+    ]);
 
-    return ok(res, { datas, shUser, title: "Preview BS" });
+    const hodUser = hodRows[0] || null;
+
+    return ok(res, { datas, shUser, hodUser, title: "Preview BS" });
   } catch (err) {
     console.error("[report.bsReport]", err);
     return fail(res, "Gagal memuat data Bon Sementara.", 500);
@@ -61,9 +69,7 @@ async function bsReport(req, res) {
 }
 
 // GET /api/management/transaksi-lpbs/:no_doc_b64
-// Samain dengan ManagementController::lpbsReport — nilai per baris DIHITUNG ULANG
-// live dari transaksi hari itu (bukan dari kolom `nilai` yang tersimpan), persis
-// seperti computeLpbsBreakdown yang dipakai approveController buat tab LPBS.
+// Samain dengan ManagementController::lpbsReport
 async function lpbsReport(req, res) {
   const no_doc = decodeNoDoc(req.params.no_doc_b64);
 
@@ -88,7 +94,6 @@ async function lpbsReport(req, res) {
       approved_hod_lpbs_at,
     } = first;
 
-    // v-- TAMBAHIN INI, sebelum manggil computeLpbsBreakdown --v
     const [kendaraanRows] = await pool.query(
       "SELECT nama_kendaraan, biaya_truk FROM data_kendaraan_tbl",
     );
@@ -108,9 +113,8 @@ async function lpbsReport(req, res) {
       ),
       hargaUM: Number(umRows[0]?.harga_uang_makan || 0),
     };
-    // ^-- SAMPE SINI --^
 
-    const breakdown = await computeLpbsBreakdown(tgl, warehouse, shared); // <-- tambahin `shared` di sini
+    const breakdown = await computeLpbsBreakdown(tgl, warehouse, shared);
     const datas = [];
     if (breakdown.uraian1)
       datas.push({
@@ -133,14 +137,23 @@ async function lpbsReport(req, res) {
         nilai: breakdown.nilai4,
       });
 
-    const [shUser] = await pool.query(
-      "SELECT id, nama, level, warehouse FROM data_user_tbl WHERE warehouse = ? ORDER BY id ASC",
-      [warehouse],
-    );
+    // Ambil data user SH & DH per warehouse dokumen, serta HOD aktif
+    const [[shUser], [hodRows]] = await Promise.all([
+      pool.query(
+        "SELECT id, nama, level, warehouse FROM data_user_tbl WHERE warehouse = ? ORDER BY id ASC",
+        [warehouse],
+      ),
+      pool.query(
+        "SELECT id, nama, level FROM data_user_tbl WHERE UPPER(level) = 'HOD' LIMIT 1",
+      ),
+    ]);
+
+    const hodUser = hodRows[0] || null;
 
     return ok(res, {
       datas,
       shUser,
+      hodUser,
       title: "Preview LPBS",
       no_doc,
       tanggal: tgl,

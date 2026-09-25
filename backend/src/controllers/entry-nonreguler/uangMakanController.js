@@ -28,7 +28,8 @@ async function list(req, res) {
   } else {
     // sql += " AND DATE(um.tgl) = CURDATE()";
     // sql += `AND DATE (um.tgl) >= CASE WHEN DAYOFWEEK(CURDATE()) = 2 THEN CURDATE() - INTERVAL 2 DAY ELSE CURDATE() END  AND DATE (um.tgl) <= CURDATE()`;
-    sql += `AND DATE(um.tgl) BETWEEN CURDATE()- INTERVAL 2 DAY AND CURDATE()`;
+    sql +=
+      " AND DATE(um.tgl) BETWEEN DATE_SUB(CURDATE(), INTERVAL 2 DAY) AND CURDATE()";
   }
   if (id_kuli) {
     sql += " AND um.id_kuli LIKE ?";

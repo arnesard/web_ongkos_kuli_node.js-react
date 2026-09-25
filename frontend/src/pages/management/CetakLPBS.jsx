@@ -40,29 +40,79 @@ function formatTglJam(dt) {
   return `${dd}/${mm}/${yy} ${hh}:${mi}`;
 }
 
-function StampBlock({ nama, waktu }) {
-  if (!nama) return null;
+function DigitalApprovalBox({ roleTitle, nama, waktu, isApproved }) {
   return (
-    <div style={{ display: "inline-block", textAlign: "center" }}>
-      <img
-        className="ttd"
-        src="/img/approved-stamp.png"
-        alt="APPROVED"
-        style={{ height: 70, width: 70 }}
-      />
-      {waktu && (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "space-between",
+        minHeight: 110,
+        padding: "4px 8px",
+      }}
+    >
+      {/* Label Jabatan / Role */}
+      <span style={{ fontSize: 11, fontWeight: "normal", marginBottom: 6 }}>
+        {roleTitle}
+      </span>
+
+      {/* Box Validasi Sistem atau Placeholder Kosong */}
+      {isApproved && nama ? (
         <div
           style={{
-            fontSize: 10,
-            color: "#333",
-            fontWeight: "bold",
-            fontStyle: "italic",
+            border: "1.5px solid #166534",
+            backgroundColor: "#f0fdf4",
+            borderRadius: 4,
+            padding: "5px 8px",
+            width: "90%",
+            maxWidth: 180,
+            textAlign: "center",
+            boxSizing: "border-box",
           }}
         >
-          {formatTglJam(waktu)}
+          <div
+            style={{
+              fontSize: 9.5,
+              fontWeight: "bold",
+              color: "#166534",
+              letterSpacing: "0.5px",
+              borderBottom: "1px dashed #86efac",
+              paddingBottom: 2,
+              marginBottom: 3,
+            }}
+          >
+            ✓ DIGITALLY APPROVED
+          </div>
+          <div
+            style={{
+              fontSize: 8.5,
+              color: "#374151",
+              lineHeight: 1.3,
+            }}
+          >
+            <div>Approved by system</div>
+            <div style={{ color: "#6b7280" }}>{formatTglJam(waktu)}</div>
+          </div>
         </div>
+      ) : (
+        /* Ruang kosong jika belum di-approve */
+        <div style={{ height: 48 }} />
       )}
-      <div>({nama})</div>
+
+      {/* Nama Person */}
+      <div
+        style={{
+          marginTop: 6,
+          fontWeight: isApproved ? "bold" : "normal",
+          fontSize: 11,
+          borderBottom: isApproved ? "none" : "1px dotted #999",
+          minWidth: 120,
+          textAlign: "center",
+        }}
+      >
+        ({nama || " ............................ "})
+      </div>
     </div>
   );
 }
@@ -119,6 +169,7 @@ export default function CetakLPBS() {
   const {
     datas,
     shUser,
+    hodUser,
     no_doc,
     tanggal,
     status,
@@ -141,9 +192,8 @@ export default function CetakLPBS() {
         @media print {
           @page { size: A4 portrait; margin: 0mm 4mm 123mm 1mm; }
           body { font-size: 10px; color: #000; }
+          .cetak-box { font-size: 10px !important; }
           .no-print, .sidebar, .topbar { display: none !important; visibility: hidden; }
-          .cetak-table-header-bg { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: #6e6e6e !important; color: #fff !important; }
-          .cetak-doc-page img.ttd { height: 80px; width: 80px; }
         }
       `}</style>
 
@@ -396,79 +446,60 @@ export default function CetakLPBS() {
         </table>
 
         <table
-          style={{ width: "50%", marginTop: 3, borderCollapse: "collapse" }}
+          style={{
+            width: "100%",
+            maxWidth: 620,
+            marginTop: 15,
+            borderCollapse: "collapse",
+          }}
         >
-          <thead>
-            <tr>
-              <td colSpan={3}></td>
-            </tr>
-            <tr>
-              <td style={{ textAlign: "center" }}>Diajukan oleh,</td>
-              <td style={{ textAlign: "center" }}>Diketahui oleh,</td>
-              <td style={{ textAlign: "center" }}>Disetujui oleh,</td>
-            </tr>
-          </thead>
           <tbody>
             <tr>
-              {status === "approvebysh" && (
-                <>
-                  <td style={{ textAlign: "center" }}>
-                    {sh1 && (
-                      <StampBlock nama={sh1.nama} waktu={approved_sh_lpbs_at} />
-                    )}
-                  </td>
-                  <td />
-                  <td />
-                </>
-              )}
-              {status === "approvebydh" && (
-                <>
-                  <td style={{ textAlign: "center" }}>
-                    {sh1 && (
-                      <StampBlock nama={sh1.nama} waktu={approved_sh_lpbs_at} />
-                    )}
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    {sh2 && (
-                      <StampBlock nama={sh2.nama} waktu={approved_dh_lpbs_at} />
-                    )}
-                  </td>
-                  <td />
-                </>
-              )}
-              {status === "approve" && (
-                <>
-                  <td style={{ textAlign: "center" }}>
-                    {sh1 && (
-                      <StampBlock nama={sh1.nama} waktu={approved_sh_lpbs_at} />
-                    )}
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    {sh2 && (
-                      <StampBlock nama={sh2.nama} waktu={approved_dh_lpbs_at} />
-                    )}
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    <StampBlock
-                      nama="Edward Supandi"
-                      waktu={approved_hod_lpbs_at}
-                    />
-                  </td>
-                </>
-              )}
-              {!status && (
-                <>
-                  <td />
-                  <td />
-                  <td />
-                </>
-              )}
+              {/* 1. Diajukan oleh (SH) */}
+              <td style={{ width: "33.33%", verticalAlign: "top" }}>
+                <DigitalApprovalBox
+                  roleTitle="Diajukan oleh,"
+                  nama={sh1?.nama}
+                  waktu={approved_sh_lpbs_at}
+                  isApproved={Boolean(
+                    status === "approvebysh" ||
+                    status === "approvebydh" ||
+                    status === "approve",
+                  )}
+                />
+              </td>
+
+              {/* 2. Diketahui oleh (DH) */}
+              <td style={{ width: "33.33%", verticalAlign: "top" }}>
+                <DigitalApprovalBox
+                  roleTitle="Diketahui oleh,"
+                  nama={sh2?.nama}
+                  waktu={approved_dh_lpbs_at}
+                  isApproved={Boolean(
+                    status === "approvebydh" || status === "approve",
+                  )}
+                />
+              </td>
+
+              {/* 3. Disetujui oleh (HOD) */}
+              <td style={{ width: "33.33%", verticalAlign: "top" }}>
+                <DigitalApprovalBox
+                  roleTitle="Disetujui oleh,"
+                  nama={hodUser?.nama}
+                  waktu={approved_hod_lpbs_at}
+                  isApproved={Boolean(status === "approve")}
+                />
+              </td>
             </tr>
           </tbody>
         </table>
 
         <p style={{ color: "#666", fontSize: 11, marginTop: 8 }}>
           *) Dokumen asli penggunaan/pembayaran harus dilampirkan
+        </p>
+        <p style={{ color: "#666", fontSize: 11, marginTop: 8 }}>
+          *) Approval Valid by system dan di akui oleh{" "}
+          <b>PT Gajah Tunggal Tbk</b>
         </p>
       </div>
       <p style={{ textAlign: "left", color: "#666", fontSize: 11, margin: 0 }}>
